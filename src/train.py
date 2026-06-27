@@ -152,6 +152,8 @@ def train_agent(
     eval_freq: int = 10_000,
     brokerage_pct: float = 0.0003,
     slippage_pct: float = 0.0005,
+    risk_aversion: float = 0.1,
+    drawdown_coeff: float = 0.05,
     seed: int = 42,
 ) -> None:
     """Download data, configure environments, run the PPO agent training,
@@ -191,12 +193,24 @@ def train_agent(
 
     # 3. Create Gymnasium environments
     # Training environment with Monitor to log rewards for reward curve
-    train_env = TradingEnv(train_df, brokerage_pct=brokerage_pct, slippage_pct=slippage_pct)
+    train_env = TradingEnv(
+        train_df,
+        brokerage_pct=brokerage_pct,
+        slippage_pct=slippage_pct,
+        risk_aversion=risk_aversion,
+        drawdown_coeff=drawdown_coeff,
+    )
     train_env = Monitor(train_env, str(logs_dir / "train_monitor"))
     train_vec_env = DummyVecEnv([lambda: train_env])
 
     # Validation environment for EvalCallback
-    val_env = TradingEnv(val_df, brokerage_pct=brokerage_pct, slippage_pct=slippage_pct)
+    val_env = TradingEnv(
+        val_df,
+        brokerage_pct=brokerage_pct,
+        slippage_pct=slippage_pct,
+        risk_aversion=risk_aversion,
+        drawdown_coeff=drawdown_coeff,
+    )
     val_env = Monitor(val_env, str(logs_dir / "val_monitor"))
     val_vec_env = DummyVecEnv([lambda: val_env])
 
@@ -258,6 +272,8 @@ if __name__ == "__main__":
     parser.add_argument("--eval_freq", type=int, default=10_000, help="Evaluation frequency in steps")
     parser.add_argument("--brokerage", type=float, default=0.0003, help="Brokerage percentage (0.03% = 0.0003)")
     parser.add_argument("--slippage", type=float, default=0.0005, help="Slippage percentage (0.05% = 0.0005)")
+    parser.add_argument("--risk-aversion", type=float, default=0.1, help="Risk aversion volatility penalty coefficient")
+    parser.add_argument("--drawdown-coeff", type=float, default=0.05, help="Drawdown penalty coefficient")
     parser.add_argument("--seed", type=int, default=42, help="Random seed")
     args = parser.parse_args()
 
@@ -268,5 +284,7 @@ if __name__ == "__main__":
         eval_freq=args.eval_freq,
         brokerage_pct=args.brokerage,
         slippage_pct=args.slippage,
+        risk_aversion=args.risk_aversion,
+        drawdown_coeff=args.drawdown_coeff,
         seed=args.seed,
     )

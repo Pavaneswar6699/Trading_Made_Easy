@@ -31,6 +31,7 @@ from typing import Any, Dict, List, Optional, Tuple
 import gymnasium as gym
 import numpy as np
 import pandas as pd
+from collections import deque
 from gymnasium import spaces
 
 
@@ -85,6 +86,9 @@ class TradingEnv(gym.Env):
         window_size: int = 10,
         brokerage_pct: float = 0.0003,
         slippage_pct: float = 0.0005,
+        risk_aversion: float = 0.1,
+        drawdown_coeff: float = 0.05,
+        rolling_window_size: int = 10,
         render_mode: Optional[str] = None,
     ) -> None:
         super().__init__()
@@ -103,6 +107,9 @@ class TradingEnv(gym.Env):
         self.window_size: int = window_size
         self.brokerage_pct: float = brokerage_pct
         self.slippage_pct: float = slippage_pct
+        self.risk_aversion: float = risk_aversion
+        self.drawdown_coeff: float = drawdown_coeff
+        self.rolling_window_size: int = rolling_window_size
         self.render_mode = render_mode
         self.n_features: int = len(self.FEATURE_COLS)
 
@@ -176,6 +183,8 @@ class TradingEnv(gym.Env):
         self.current_step = self.window_size   # need `window_size` rows behind us
         self.total_profit = 0.0
         self.trade_log = []
+        self.max_net_worth = self.initial_capital
+        self.returns_history = deque(maxlen=self.rolling_window_size)
 
         observation = self._get_observation()
         info = self._get_info()
@@ -292,12 +301,30 @@ class TradingEnv(gym.Env):
         # ---- ADVANCE TO NEXT DAY ----
         self.current_step += 1
 
-        # ---- CALCULATE NEW PORTFOLIO VALUE & REWARD ----
+        # ---- CALCULATE NEW PORTFOLIO VALUE & ACTUAL REWARD ----
         next_price = self._get_close_price(self.current_step)
         next_net_worth = self.capital + self.shares_held * next_price
         
+        # Calculate actual return of this step
+        step_return = ((next_net_worth - prev_net_worth) / prev_net_worth) * 100.0 if prev_net_worth > 0 else 0.0
+        self.returns_history.append(step_return)
+        
         # Step reward: percentage return relative to initial capital
-        reward = ((next_net_worth - prev_net_worth) / self.initial_capital) * 100.0
+        actual_reward = ((next_net_worth - prev_net_worth) / self.initial_capital) * 100.0
+        reward = actual_reward
+
+        # ---- APPLY VOLATILITY & DRAWDOWN SHAPING PENALTIES ----
+        # Volatility penalty: standard deviation of rolling returns
+        if len(self.returns_history) >= 2:
+            volatility = np.std(self.returns_history)
+            volatility_penalty = self.risk_aversion * volatility
+            reward -= volatility_penalty
+            
+        # Drawdown penalty: percentage drawdown from running peak net worth
+        self.max_net_worth = max(self.max_net_worth, next_net_worth)
+        drawdown = (self.max_net_worth - next_net_worth) / self.max_net_worth if self.max_net_worth > 0 else 0.0
+        drawdown_penalty = self.drawdown_coeff * drawdown * 100.0
+        reward -= drawdown_penalty
 
         # ---- CHECK TERMINATION CONDITIONS ----
         terminated = next_net_worth < 10_000.0

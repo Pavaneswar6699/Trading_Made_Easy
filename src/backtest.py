@@ -47,6 +47,8 @@ def run_backtest(
     save_image_path: str = "logs/backtest_results.png",
     brokerage_pct: float = 0.0003,
     slippage_pct: float = 0.0005,
+    risk_aversion: float = 0.1,
+    drawdown_coeff: float = 0.05,
 ) -> None:
     """Load a trained agent, simulate on hold-out test data, and plot performance."""
     project_root = Path(__file__).resolve().parent.parent
@@ -87,6 +89,8 @@ def run_backtest(
         initial_capital=initial_capital,
         brokerage_pct=brokerage_pct,
         slippage_pct=slippage_pct,
+        risk_aversion=risk_aversion,
+        drawdown_coeff=drawdown_coeff,
         render_mode=None,
     )
     
@@ -348,6 +352,8 @@ if __name__ == "__main__":
     parser.add_argument("--model", type=str, default="models/best_model.zip", help="Path to trained model zip")
     parser.add_argument("--brokerage", type=float, default=0.0003, help="Brokerage percentage (0.03% = 0.0003)")
     parser.add_argument("--slippage", type=float, default=0.0005, help="Slippage percentage (0.05% = 0.0005)")
+    parser.add_argument("--risk-aversion", type=float, default=0.1, help="Risk aversion volatility penalty coefficient")
+    parser.add_argument("--drawdown-coeff", type=float, default=0.05, help="Drawdown penalty coefficient")
     args = parser.parse_args()
 
     run_backtest(
@@ -356,4 +362,6 @@ if __name__ == "__main__":
         model_path=args.model,
         brokerage_pct=args.brokerage,
         slippage_pct=args.slippage,
+        risk_aversion=args.risk_aversion,
+        drawdown_coeff=args.drawdown_coeff,
     )
