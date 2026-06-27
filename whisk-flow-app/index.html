@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Whisk & Flow — Creative Generative AI Studio</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&family=Syncopate:wght@700&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <!-- Background Particle Canvas -->
+    <canvas id="bg-particle-canvas"></canvas>
+    
+    <div class="app-wrapper">
+        
+        <!-- NAVBAR -->
+        <nav class="navbar glass-element">
+            <div class="nav-logo">
+                <i class="fa-solid fa-wand-magic-sparkles logo-glow"></i>
+                <span>WHISK & FLOW</span>
+            </div>
+            <div class="nav-actions">
+                <div id="user-profile" class="user-profile hidden">
+                    <span id="user-display-name">Creator</span>
+                    <button id="btn-logout" class="btn-icon" title="Logout"><i class="fa-solid fa-sign-out-alt"></i></button>
+                </div>
+                <button id="btn-login-trigger" class="btn btn-secondary glow-cyan">
+                    <i class="fa-solid fa-user-astronaut"></i> Sign In
+                </button>
+            </div>
+        </nav>
+
+        <!-- HERO SECTION -->
+        <header class="hero-section">
+            <h1 class="hero-title">WHISK & FLOW</h1>
+            <p class="hero-subtitle">Remix visual styles, capture kinetic paths, and save your generative creations to the cloud.</p>
+        </header>
+
+        <!-- WORKSPACE GRID -->
+        <main class="workspace-grid">
+            
+            <!-- BOARD 1: WHISK REMIXER -->
+            <section class="workspace-card glass-element fade-in-up">
+                <div class="card-header">
+                    <i class="fa-solid fa-palette icon-accent-cyan"></i>
+                    <div>
+                        <h2>Whisk Remix Board</h2>
+                        <p>Draw & apply generative shaders to style prompts</p>
+                    </div>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="whisk-canvas"></canvas>
+                    <div class="canvas-controls">
+                        <!-- Brush settings -->
+                        <div class="control-row">
+                            <label><i class="fa-solid fa-paint-brush"></i> Brush Size</label>
+                            <input type="range" id="brush-size" min="2" max="30" value="8" class="slider">
+                        </div>
+                        
+                        <!-- Shader selection -->
+                        <div class="control-row">
+                            <label><i class="fa-solid fa-wand-magic-sparkles"></i> Remix Style</label>
+                            <select id="remix-style" class="dropdown">
+                                <option value="cyber">Cyberpunk Neon</option>
+                                <option value="pixel">Vibrant Retro Pixel</option>
+                                <option value="vapor">Dreamy Vaporwave</option>
+                                <option value="midnight">Sketch Blueprint</option>
+                            </select>
+                        </div>
+                        
+                        <div class="btn-row">
+                            <button id="btn-clear-whisk" class="btn btn-muted">Clear</button>
+                            <button id="btn-remix" class="btn btn-primary glow-cyan">Remix Frame!</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- BOARD 2: FLOW MOTION -->
+            <section class="workspace-card glass-element fade-in-up delay-1">
+                <div class="card-header">
+                    <i class="fa-solid fa-wind icon-accent-purple"></i>
+                    <div>
+                        <h2>Flow Motion Engine</h2>
+                        <p>Click on the board to draw vector paths for particle flow</p>
+                    </div>
+                </div>
+                
+                <div class="canvas-container">
+                    <canvas id="flow-canvas"></canvas>
+                    <div class="canvas-controls">
+                        <!-- Particle style -->
+                        <div class="control-row">
+                            <label><i class="fa-solid fa-meteor"></i> Flow Style</label>
+                            <select id="flow-particle-style" class="dropdown">
+                                <option value="comet">Cosmic Comet Tail</option>
+                                <option value="spark">Electric Lightning Sparks</option>
+                                <option value="firefly">Enchanted Fireflies</option>
+                            </select>
+                        </div>
+                        
+                        <!-- Flow speed -->
+                        <div class="control-row">
+                            <label><i class="fa-solid fa-gauge-high"></i> Flow Speed</label>
+                            <input type="range" id="flow-speed" min="1" max="10" value="4" class="slider">
+                        </div>
+                        
+                        <div class="btn-row">
+                            <button id="btn-clear-flow" class="btn btn-muted">Reset Paths</button>
+                            <button id="btn-flow" class="btn btn-secondary glow-purple">Animate Flow!</button>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <!-- SAVE CREATION CARD -->
+        <section class="save-section glass-element fade-in-up delay-2">
+            <div class="save-form">
+                <div class="form-group">
+                    <label for="creation-title">Name Your Masterpiece</label>
+                    <input type="text" id="creation-title" placeholder="e.g. Neon Swarm 2077" class="input-text">
+                </div>
+                <button id="btn-publish" class="btn btn-primary w-full glow-gold">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Publish to Community Gallery
+                </button>
+            </div>
+        </section>
+
+        <!-- GALLERY SHOWCASE -->
+        <section class="gallery-section fade-in-up delay-3">
+            <div class="section-title">
+                <i class="fa-solid fa-images text-gold"></i>
+                <h2>Community Creative Feed</h2>
+                <div class="title-line"></div>
+            </div>
+            
+            <div id="gallery-grid" class="gallery-grid">
+                <!-- Populated dynamically via Firebase / localStorage -->
+                <div class="gallery-placeholder">
+                    <i class="fa-solid fa-spinner fa-spin"></i>
+                    <p>Fetching creator database...</p>
+                </div>
+            </div>
+        </section>
+
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <p>Whisk & Flow Creative Studio | Built with HTML5 Canvas, Firebase v10 & CSS3 Keyframes</p>
+        </footer>
+
+    </div>
+
+    <!-- AUTHENTICATION DIALOG (GLASS MODAL) -->
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-element">
+            <button id="btn-close-auth" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            <div class="auth-header">
+                <i class="fa-solid fa-rocket-launch text-cyan"></i>
+                <h3>Enter Creative Grid</h3>
+                <p>Register as a creator to publish animations to the community feed.</p>
+            </div>
+            <form id="auth-form" class="auth-form">
+                <div class="form-group">
+                    <label for="auth-email">Creator Email</label>
+                    <input type="email" id="auth-email" required class="input-text" placeholder="name@domain.com">
+                </div>
+                <div class="form-group">
+                    <label for="auth-password">Password</label>
+                    <input type="password" id="auth-password" required class="input-text" placeholder="••••••••">
+                </div>
+                <div class="auth-buttons">
+                    <button type="submit" id="btn-signin" class="btn btn-primary">Sign In / Sign Up</button>
+                    <button type="button" id="btn-anonymous" class="btn btn-secondary">Anonymous Enter</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Core App Module Scripts -->
+    <script type="module" src="app.js"></script>
+</body>
+</html>
