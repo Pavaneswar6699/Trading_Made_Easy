@@ -3,12 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>NiftyRL — Deep Reinforcement Learning Trading Dashboard</title>
+    <title>NiftyRL — Firebase AI Quant Studio</title>
     
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Syncopate:wght@700&display=swap" rel="stylesheet">
     
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
@@ -16,237 +16,309 @@
     <!-- Chart.js -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     
-    <!-- Custom Style -->
+    <!-- Custom CSS -->
     <link rel="stylesheet" href="static/styles.css">
 </head>
 <body>
-    <div class="glass-bg-blur"></div>
-    <div class="dashboard-container">
+    <!-- Background Swarming Particle Canvas -->
+    <canvas id="bg-particle-canvas"></canvas>
+    
+    <div class="app-container">
         
-        <!-- HEADER -->
-        <header class="app-header">
+        <!-- HEADER NAVBAR -->
+        <header class="app-header glass-card">
             <div class="logo-area">
-                <i class="fa-solid fa-chart-line-up logo-icon"></i>
+                <i class="fa-solid fa-brain-circuit logo-icon"></i>
                 <div class="logo-text">
                     <h1>NiftyRL</h1>
-                    <span>Intraday Quant Agent</span>
+                    <span>AI Quant Studio</span>
                 </div>
             </div>
-            <div class="header-status">
-                <span class="status-indicator online"></span>
-                <span id="global-status-text">Backend Connected</span>
+            <div class="header-actions">
+                <div id="user-profile" class="user-profile hidden">
+                    <span id="user-display-name">Creator</span>
+                    <button id="btn-logout" class="btn-logout" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
+                </div>
+                <button id="btn-login-trigger" class="btn btn-secondary glow-cyan">
+                    <i class="fa-solid fa-user-astronaut"></i> Creator Access
+                </button>
             </div>
         </header>
 
-        <!-- MAIN LAYOUT -->
+        <!-- INTRO HERO -->
+        <section class="hero-intro text-center">
+            <h2>Train & Evaluate Trading Agents in 3 Simple Steps</h2>
+            <p>Our deep reinforcement learning agent (PPO) learns to trade Indian stocks by adjusting exposure based on market volatility regimes.</p>
+        </section>
+
+        <!-- STEP WIZARD GRID -->
         <main class="dashboard-grid">
             
-            <!-- LEFT PANEL: CONFIGURATION & TRAINING -->
-            <section class="panel-left">
-                
-                <!-- CARD: CONFIGURATION -->
-                <div class="card glass-card fade-in">
-                    <div class="card-header">
-                        <i class="fa-solid fa-sliders-simple icon-accent"></i>
-                        <h2>Agent Configuration</h2>
-                    </div>
-                    <div class="card-body">
-                        <form id="config-form">
-                            <!-- Ticker Select -->
-                            <div class="form-group">
-                                <label for="ticker-select">NSE Stock Asset</label>
-                                <select id="ticker-select" class="form-control">
-                                    <!-- Populated dynamically -->
-                                </select>
-                            </div>
-                            
-                            <!-- Parameters grid -->
-                            <div class="form-row">
-                                <div class="form-group col">
-                                    <label for="brokerage-input">Brokerage (%)</label>
-                                    <input type="number" id="brokerage-input" class="form-control" value="0.03" step="0.01" min="0">
-                                </div>
-                                <div class="form-group col">
-                                    <label for="slippage-input">Slippage (%)</label>
-                                    <input type="number" id="slippage-input" class="form-control" value="0.05" step="0.01" min="0">
-                                </div>
-                            </div>
-                            
-                            <div class="form-row">
-                                <div class="form-group col">
-                                    <label for="risk-aversion-input">Risk Aversion</label>
-                                    <input type="number" id="risk-aversion-input" class="form-control" value="0.10" step="0.01" min="0">
-                                </div>
-                                <div class="form-group col">
-                                    <label for="drawdown-coeff-input">Drawdown Coeff</label>
-                                    <input type="number" id="drawdown-coeff-input" class="form-control" value="0.05" step="0.01" min="0">
-                                </div>
-                            </div>
-                        </form>
-                    </div>
+            <!-- STEP 1: CONFIGURE ASSET -->
+            <div class="card glass-card wizard-step fade-in">
+                <span class="step-badge">Step 1</span>
+                <div class="card-header">
+                    <i class="fa-solid fa-sliders icon-cyan"></i>
+                    <h2>Asset & Friction Settings</h2>
                 </div>
-
-                <!-- CARD: TRAINING ARENA -->
-                <div class="card glass-card fade-in delay-1">
-                    <div class="card-header">
-                        <i class="fa-solid fa-brain-circuit icon-accent"></i>
-                        <h2>Training Controls</h2>
-                    </div>
-                    <div class="card-body">
+                <div class="card-body">
+                    <form id="config-form">
                         <div class="form-group">
-                            <label for="timesteps-input">Training Timesteps: <span id="timesteps-val" class="glow-value">50,000</span></label>
-                            <input type="range" id="timesteps-input" class="form-range" min="10000" max="300000" step="10000" value="50000">
+                            <label for="ticker-select">Select NSE Asset</label>
+                            <select id="ticker-select" class="form-control">
+                                <!-- Populated dynamically -->
+                            </select>
                         </div>
-                        <button id="btn-train" class="btn btn-primary w-full glow-btn">
-                            <i class="fa-solid fa-play"></i> Train RL Agent
-                        </button>
-                    </div>
-                </div>
+                        
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="brokerage-input">Brokerage (%)</label>
+                                <input type="number" id="brokerage-input" class="form-control" value="0.03" step="0.01" min="0">
+                            </div>
+                            <div class="form-group col">
+                                <label for="slippage-input">Slippage (%)</label>
+                                <input type="number" id="slippage-input" class="form-control" value="0.05" step="0.01" min="0">
+                            </div>
+                        </div>
 
-                <!-- CARD: LIVE PROGRESS STATUS -->
-                <div id="progress-card" class="card glass-card status-card hidden fade-in">
-                    <div class="card-header">
-                        <div class="header-flex">
-                            <h2><i class="fa-solid fa-arrows-spin fa-spin status-spin-icon"></i> Live Training Status</h2>
-                            <span id="progress-percentage" class="badge">0%</span>
+                        <div class="form-row">
+                            <div class="form-group col">
+                                <label for="risk-aversion-input">Risk Aversion</label>
+                                <input type="number" id="risk-aversion-input" class="form-control" value="0.10" step="0.01" min="0">
+                            </div>
+                            <div class="form-group col">
+                                <label for="drawdown-coeff-input">Drawdown Coeff</label>
+                                <input type="number" id="drawdown-coeff-input" class="form-control" value="0.05" step="0.01" min="0">
+                            </div>
                         </div>
+                    </form>
+                </div>
+            </div>
+
+            <!-- STEP 2: TRAIN AI AGENT -->
+            <div class="card glass-card wizard-step fade-in delay-1">
+                <span class="step-badge">Step 2</span>
+                <div class="card-header">
+                    <i class="fa-solid fa-microchip icon-purple"></i>
+                    <h2>Train AI Policy</h2>
+                </div>
+                <div class="card-body">
+                    <div class="form-group">
+                        <label for="timesteps-input">Training Steps: <span id="timesteps-val" class="glow-value">50,000</span></label>
+                        <input type="range" id="timesteps-input" class="form-range" min="10000" max="200000" step="10000" value="50000">
                     </div>
-                    <div class="card-body">
+                    <button id="btn-train" class="btn btn-primary w-full glow-purple">
+                        <i class="fa-solid fa-play"></i> Start Agent Training
+                    </button>
+
+                    <!-- LIVE TRAINING PROGRESS BAR -->
+                    <div id="progress-card" class="training-progress-box hidden">
                         <div class="progress-bar-container">
                             <div id="progress-bar-fill" class="progress-bar-fill"></div>
                         </div>
-                        <div class="status-metrics">
-                            <div class="status-metric-box">
+                        <div class="progress-stats">
+                            <span id="progress-percentage" class="badge">0%</span>
+                            <span id="status-message" class="status-msg">Initializing...</span>
+                        </div>
+                        <div class="live-metrics">
+                            <div class="metric-box">
                                 <span class="metric-lbl">Step Count</span>
                                 <span id="status-step" class="metric-val">0</span>
                             </div>
-                            <div class="status-metric-box">
+                            <div class="metric-box">
                                 <span class="metric-lbl">Net Worth</span>
                                 <span id="status-worth" class="metric-val">₹1,00,000</span>
                             </div>
                         </div>
-                        <p id="status-message" class="status-message">Downloading data...</p>
                     </div>
                 </div>
-            </section>
+            </div>
 
-            <!-- RIGHT PANEL: BACKTEST & RESULTS -->
-            <section class="panel-right">
-                
-                <!-- CARD: BACKTEST ARENA -->
-                <div class="card glass-card fade-in delay-2">
-                    <div class="card-header header-with-btn">
-                        <div class="title-with-icon">
-                            <i class="fa-solid fa-chart-line icon-accent"></i>
-                            <h2>Performance Arena</h2>
-                        </div>
-                        <button id="btn-backtest" class="btn btn-secondary glow-btn-sec">
-                            <i class="fa-solid fa-chart-pie"></i> Run Backtest
-                        </button>
-                    </div>
-                    <div class="card-body">
-                        <!-- Key metrics cards -->
-                        <div class="metrics-grid">
-                            <div class="metric-card">
-                                <div class="metric-icon-box cyan"><i class="fa-solid fa-wallet"></i></div>
-                                <div class="metric-info">
-                                    <span class="metric-title">Portfolio Worth</span>
-                                    <span id="metric-final-worth" class="metric-value">₹1,00,000.00</span>
-                                </div>
-                            </div>
-                            <div class="metric-card">
-                                <div class="metric-icon-box green"><i class="fa-solid fa-percent"></i></div>
-                                <div class="metric-info">
-                                    <span class="metric-title">Agent Return</span>
-                                    <span id="metric-agent-return" class="metric-value">+0.00%</span>
-                                </div>
-                            </div>
-                            <div class="metric-card">
-                                <div class="metric-icon-box blue"><i class="fa-solid fa-scale-balanced"></i></div>
-                                <div class="metric-info">
-                                    <span class="metric-title">Sharpe Ratio</span>
-                                    <span id="metric-sharpe" class="metric-value">0.0000</span>
-                                </div>
-                            </div>
-                            <div class="metric-card">
-                                <div class="metric-icon-box red"><i class="fa-solid fa-arrow-trend-down"></i></div>
-                                <div class="metric-info">
-                                    <span class="metric-title">Max Drawdown</span>
-                                    <span id="metric-drawdown" class="metric-value">0.00%</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Charts container -->
-                        <div class="charts-section">
-                            <div class="chart-wrapper">
-                                <canvas id="equity-chart"></canvas>
-                            </div>
-                        </div>
-                        
-                        <!-- Additional detail stats row -->
-                        <div class="additional-stats-bar">
-                            <div class="stat-item">
-                                <span class="stat-lbl">Win Rate:</span>
-                                <span id="stat-win-rate" class="stat-val">0.0%</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-lbl">Executed Trades:</span>
-                                <span id="stat-trades" class="stat-val">0</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-lbl">Total Transaction Frictions:</span>
-                                <span id="stat-friction" class="stat-val">₹0.00</span>
-                            </div>
-                            <div class="stat-item">
-                                <span class="stat-lbl">Buy & Hold Benchmark:</span>
-                                <span id="stat-benchmark-return" class="stat-val">0.0%</span>
-                            </div>
-                        </div>
-                    </div>
+            <!-- STEP 3: RUN SIMULATION & COMPARE -->
+            <div class="card glass-card wizard-step fade-in delay-2">
+                <span class="step-badge">Step 3</span>
+                <div class="card-header">
+                    <i class="fa-solid fa-chart-line icon-green"></i>
+                    <h2>Simulation Arena</h2>
                 </div>
-
-                <!-- CARD: TRADE LOG HISTORY -->
-                <div class="card glass-card fade-in delay-3">
-                    <div class="card-header">
-                        <i class="fa-solid fa-list-timeline icon-accent"></i>
-                        <h2>Trade Log History</h2>
-                    </div>
-                    <div class="card-body scroll-body">
-                        <div class="table-responsive">
-                            <table class="table-custom">
-                                <thead>
-                                    <tr>
-                                        <th>Step</th>
-                                        <th>Action</th>
-                                        <th>Execution Price</th>
-                                        <th>Shares Traded</th>
-                                        <th>Friction Paid</th>
-                                        <th>Realised PnL</th>
-                                        <th>Remaining Cash</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="trade-log-body">
-                                    <tr>
-                                        <td colspan="7" class="text-center text-muted">No trade history available. Run a backtest first.</td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
+                <div class="card-body flex-center-body">
+                    <p class="step-hint">Click below to test your trained policy against real market data.</p>
+                    <button id="btn-backtest" class="btn btn-secondary w-full glow-green">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Run Backtest Simulation
+                    </button>
                 </div>
-
-            </section>
+            </div>
             
         </main>
-        
+
+        <!-- PERFORMANCE RESULTS (ACTIVE AFTER BACKTEST) -->
+        <section id="results-section" class="results-section glass-card hidden fade-in">
+            <div class="card-header header-with-btn">
+                <div class="title-with-icon">
+                    <i class="fa-solid fa-trophy icon-gold"></i>
+                    <h2>Performance Report</h2>
+                </div>
+                <button id="btn-publish" class="btn btn-secondary glow-gold">
+                    <i class="fa-solid fa-cloud-arrow-up"></i> Publish to Scoreboard
+                </button>
+            </div>
+            <div class="card-body">
+                <!-- Top Key Metrics Cards -->
+                <div class="metrics-grid">
+                    <div class="metric-card">
+                        <div class="icon-box cyan"><i class="fa-solid fa-wallet"></i></div>
+                        <div class="info">
+                            <span class="title">Final Capital</span>
+                            <span id="metric-final-worth" class="value">₹1,00,000.00</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="icon-box green"><i class="fa-solid fa-percent"></i></div>
+                        <div class="info">
+                            <span class="title">Agent Return</span>
+                            <span id="metric-agent-return" class="value">+0.00%</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="icon-box blue"><i class="fa-solid fa-scale-balanced"></i></div>
+                        <div class="info">
+                            <span class="title">Sharpe Ratio</span>
+                            <span id="metric-sharpe" class="value">0.0000</span>
+                        </div>
+                    </div>
+                    <div class="metric-card">
+                        <div class="icon-box red"><i class="fa-solid fa-chart-line-down"></i></div>
+                        <div class="info">
+                            <span class="title">Max Drawdown</span>
+                            <span id="metric-drawdown" class="value">0.00%</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Dual Axis Equity Comparison Chart -->
+                <div class="chart-container">
+                    <div class="chart-wrapper">
+                        <canvas id="equity-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Secondary Metric Row -->
+                <div class="secondary-stats-bar">
+                    <div class="stat-item">
+                        <span class="lbl">Win Rate:</span>
+                        <span id="stat-win-rate" class="val">0.0%</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="lbl">Executed Trades:</span>
+                        <span id="stat-trades" class="val">0</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="lbl">Total Frictions Paid:</span>
+                        <span id="stat-friction" class="val">₹0.00</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="lbl">Benchmark Return:</span>
+                        <span id="stat-benchmark-return" class="val">0.0%</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- GLOBAL SCOREBOARD / LEADERBOARD -->
+        <section class="leaderboard-section glass-card fade-in">
+            <div class="card-header">
+                <i class="fa-solid fa-ranking-star icon-gold"></i>
+                <h2>Community Quant Scoreboard</h2>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>Rank</th>
+                                <th>Asset</th>
+                                <th>Creator</th>
+                                <th>Agent Return</th>
+                                <th>Sharpe</th>
+                                <th>Drawdown</th>
+                                <th>Friction Paid</th>
+                                <th>Date Saved</th>
+                            </tr>
+                        </thead>
+                        <tbody id="scoreboard-body">
+                            <tr>
+                                <td colspan="8" class="text-center text-muted">Loading global scores...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- STEP 4: DETAILED TRADE LOGS -->
+        <section class="trade-log-section glass-card fade-in">
+            <div class="card-header">
+                <i class="fa-solid fa-clock-rotate-left icon-cyan"></i>
+                <h2>Detailed Execution History</h2>
+            </div>
+            <div class="card-body scroll-body">
+                <div class="table-responsive">
+                    <table class="table-custom">
+                        <thead>
+                            <tr>
+                                <th>Step</th>
+                                <th>Action</th>
+                                <th>Execution Price</th>
+                                <th>Shares Traded</th>
+                                <th>Friction Paid</th>
+                                <th>Realised PnL</th>
+                                <th>Remaining Cash</th>
+                            </tr>
+                        </thead>
+                        <tbody id="trade-log-body">
+                            <tr>
+                                <td colspan="7" class="text-center text-muted">No simulation history found. Click 'Run Backtest Simulation' to generate logs.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
         <!-- FOOTER -->
         <footer class="app-footer">
-            <p>NiftyRL Intraday Agent Dashboard | Powered by stable-baselines3, FastAPI & Chart.js</p>
+            <p>NiftyRL Quant Dashboard | Powered by stable-baselines3, FastAPI & Firebase Web SDK</p>
         </footer>
+
     </div>
 
-    <!-- Scripts -->
-    <script src="static/main.js"></script>
+    <!-- GLASS LOGIN MODAL -->
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div class="modal-content glass-card">
+            <button id="btn-close-auth" class="modal-close"><i class="fa-solid fa-xmark"></i></button>
+            <div class="auth-header text-center">
+                <i class="fa-solid fa-rocket-launch text-cyan"></i>
+                <h3>Creator Authentication</h3>
+                <p>Register to save backtest benchmarks to the public leaderboard.</p>
+            </div>
+            <form id="auth-form" class="auth-form">
+                <div class="form-group">
+                    <label for="auth-email">Creator Email</label>
+                    <input type="email" id="auth-email" required class="form-control" placeholder="name@domain.com">
+                </div>
+                <div class="form-group">
+                    <label for="auth-password">Password</label>
+                    <input type="password" id="auth-password" required class="form-control" placeholder="••••••••">
+                </div>
+                <div class="auth-buttons">
+                    <button type="submit" id="btn-signin" class="btn btn-primary w-full">Sign In / Register</button>
+                    <button type="button" id="btn-anonymous" class="btn btn-secondary w-full">Anonymous Access</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Client Scripts -->
+    <script type="module" src="static/main.js"></script>
 </body>
 </html>

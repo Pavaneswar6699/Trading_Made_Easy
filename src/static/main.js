@@ -1,9 +1,106 @@
 // ==========================================================================
-// NiftyRL Dashboard — Interactive Client Logic
+// NiftyRL Trading Studio — Interactive Wizard Client Logic
 // ==========================================================================
 
+import { dbSaveScore, dbGetScores, useFirebase, auth } from "./firebase-config.js";
+import { signInAnonymously, signInWithEmailAndPassword, createUserWithEmailAndPassword, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-auth.js";
+
 document.addEventListener("DOMContentLoaded", () => {
-    // --- Elements ---
+    
+    // ==========================================================================
+    // 1. BACKGROUND SWARMING PARTICLE BACKDROP
+    // ==========================================================================
+    const bgCanvas = document.getElementById("bg-particle-canvas");
+    const bgCtx = bgCanvas.getContext("2d");
+    
+    let particles = [];
+    const particleCount = 60;
+    const mouse = { x: null, y: null, radius: 140 };
+
+    function resizeBgCanvas() {
+        bgCanvas.width = window.innerWidth;
+        bgCanvas.height = window.innerHeight;
+    }
+    window.addEventListener("resize", resizeBgCanvas);
+    resizeBgCanvas();
+
+    window.addEventListener("mousemove", (e) => {
+        mouse.x = e.x;
+        mouse.y = e.y;
+    });
+
+    window.addEventListener("mouseout", () => {
+        mouse.x = null;
+        mouse.y = null;
+    });
+
+    class Particle {
+        constructor() {
+            this.x = Math.random() * bgCanvas.width;
+            this.y = Math.random() * bgCanvas.height;
+            this.vx = (Math.random() - 0.5) * 0.7;
+            this.vy = (Math.random() - 0.5) * 0.7;
+            this.size = Math.random() * 2 + 1;
+        }
+        update() {
+            this.x += this.vx;
+            this.y += this.vy;
+
+            if (this.x < 0 || this.x > bgCanvas.width) this.vx *= -1;
+            if (this.y < 0 || this.y > bgCanvas.height) this.vy *= -1;
+
+            if (mouse.x !== null) {
+                let dx = mouse.x - this.x;
+                let dy = mouse.y - this.y;
+                let dist = Math.hypot(dx, dy);
+                if (dist < mouse.radius) {
+                    let force = (mouse.radius - dist) / mouse.radius;
+                    this.x += (dx / dist) * force * 1.2;
+                    this.y += (dy / dist) * force * 1.2;
+                }
+            }
+        }
+        draw() {
+            bgCtx.beginPath();
+            bgCtx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+            bgCtx.fillStyle = "rgba(255, 255, 255, 0.15)";
+            bgCtx.fill();
+        }
+    }
+
+    for (let i = 0; i < particleCount; i++) {
+        particles.push(new Particle());
+    }
+
+    function animateBackground() {
+        bgCtx.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
+        
+        for (let i = 0; i < particles.length; i++) {
+            particles[i].update();
+            particles[i].draw();
+
+            for (let j = i + 1; j < particles.length; j++) {
+                let dx = particles[i].x - particles[j].x;
+                let dy = particles[i].y - particles[j].y;
+                let dist = Math.hypot(dx, dy);
+                if (dist < 110) {
+                    bgCtx.beginPath();
+                    bgCtx.moveTo(particles[i].x, particles[i].y);
+                    bgCtx.lineTo(particles[j].x, particles[j].y);
+                    bgCtx.strokeStyle = `rgba(0, 240, 255, ${0.08 * (1 - dist/110)})`;
+                    bgCtx.lineWidth = 0.5;
+                    bgCtx.stroke();
+                }
+            }
+        }
+        requestAnimationFrame(animateBackground);
+    }
+    animateBackground();
+
+
+    // ==========================================================================
+    // 2. ELEMENT SELECTIONS & WIZARD UI EVENT LISTENERS
+    // ==========================================================================
     const tickerSelect = document.getElementById("ticker-select");
     const brokerageInput = document.getElementById("brokerage-input");
     const slippageInput = document.getElementById("slippage-input");
@@ -22,6 +119,8 @@ document.addEventListener("DOMContentLoaded", () => {
     const statusWorth = document.getElementById("status-worth");
     const statusMessage = document.getElementById("status-message");
     
+    const resultsSection = document.getElementById("results-section");
+    const btnPublish = document.getElementById("btn-publish");
     const metricFinalWorth = document.getElementById("metric-final-worth");
     const metricAgentReturn = document.getElementById("metric-agent-return");
     const metricSharpe = document.getElementById("metric-sharpe");
@@ -33,12 +132,13 @@ document.addEventListener("DOMContentLoaded", () => {
     const statBenchmarkReturn = document.getElementById("stat-benchmark-return");
     
     const tradeLogBody = document.getElementById("trade-log-body");
-    
-    // --- Global Chart Instance ---
+    const scoreboardBody = document.getElementById("scoreboard-body");
+
     let equityChartInstance = null;
     let progressInterval = null;
+    let lastBacktestResult = null; // Cache active result details
 
-    // --- Format Helpers ---
+    // Format utility helpers
     const formatCurrency = (val) => {
         return new Intl.NumberFormat('en-IN', {
             style: 'currency',
@@ -52,12 +152,15 @@ document.addEventListener("DOMContentLoaded", () => {
         return `${sign}${val.toFixed(2)}%`;
     };
 
-    // --- Slider Value Change ---
+    // Range slider tracking
     timestepsInput.addEventListener("input", (e) => {
         timestepsVal.textContent = parseInt(e.target.value).toLocaleString();
     });
 
-    // --- Fetch Stock Tickers ---
+
+    // ==========================================================================
+    // 3. stock choice api loaders
+    // ==========================================================================
     const loadTickers = async () => {
         try {
             const res = await fetch("/api/tickers");
@@ -71,16 +174,18 @@ document.addEventListener("DOMContentLoaded", () => {
             });
         } catch (err) {
             console.error("Failed to load tickers:", err);
-            statusMessage.textContent = "Error: Could not connect to backend.";
         }
     };
 
-    // --- Start Training Pipeline ---
+
+    // ==========================================================================
+    // 4. TRAINING LOGIC & POLISHING
+    // ==========================================================================
     btnTrain.addEventListener("click", async () => {
         const params = {
             ticker: tickerSelect.value,
             timesteps: parseInt(timestepsInput.value),
-            brokerage: parseFloat(brokerageInput.value) / 100, // convert from %
+            brokerage: parseFloat(brokerageInput.value) / 100,
             slippage: parseFloat(slippageInput.value) / 100,
             risk_aversion: parseFloat(riskAversionInput.value),
             drawdown_coeff: parseFloat(drawdownCoeffInput.value)
@@ -93,7 +198,7 @@ document.addEventListener("DOMContentLoaded", () => {
         progressPercentage.textContent = "0%";
         statusStep.textContent = "0";
         statusWorth.textContent = formatCurrency(100000);
-        statusMessage.textContent = "Initialising PPO Agent training...";
+        statusMessage.textContent = "Spawning environments...";
 
         try {
             const res = await fetch("/api/train", {
@@ -104,8 +209,7 @@ document.addEventListener("DOMContentLoaded", () => {
             const data = await res.json();
 
             if (data.status === "ok") {
-                // Poll status every second
-                progressInterval = setInterval(pollTrainingProgress, 1000);
+                progressInterval = setInterval(pollProgress, 1000);
             } else {
                 statusMessage.textContent = `Error: ${data.message}`;
                 btnTrain.disabled = false;
@@ -113,14 +217,13 @@ document.addEventListener("DOMContentLoaded", () => {
             }
         } catch (err) {
             console.error(err);
-            statusMessage.textContent = "Error: Network connection failed.";
+            statusMessage.textContent = "Connection to training runner failed.";
             btnTrain.disabled = false;
             btnBacktest.disabled = false;
         }
     });
 
-    // --- Poll Progress Endpoint ---
-    const pollTrainingProgress = async () => {
+    const pollProgress = async () => {
         try {
             const res = await fetch("/api/train/status");
             const data = await res.json();
@@ -137,27 +240,24 @@ document.addEventListener("DOMContentLoaded", () => {
                 btnBacktest.disabled = false;
                 
                 if (data.progress_pct >= 100) {
-                    statusMessage.textContent = "Agent successfully trained! Ready to backtest.";
-                    // Automatically run a backtest on completion
-                    runBacktestSimulation();
+                    statusMessage.textContent = "AI Model trained! Proceed to Step 3.";
                 } else {
-                    statusMessage.textContent = `Training stopped: ${data.message}`;
+                    statusMessage.textContent = `Stopped: ${data.message}`;
                 }
             }
         } catch (err) {
-            console.error("Progress polling error:", err);
+            console.error(err);
         }
     };
 
-    // --- Run Backtest Simulation ---
-    btnBacktest.addEventListener("click", () => {
-        runBacktestSimulation();
-    });
 
-    const runBacktestSimulation = async () => {
+    // ==========================================================================
+    // 5. SIMULATION BACKTEST ARENA
+    // ==========================================================================
+    btnBacktest.addEventListener("click", async () => {
         const params = {
             ticker: tickerSelect.value,
-            years: 2, // 2 years backtest
+            years: 2,
             brokerage: parseFloat(brokerageInput.value) / 100,
             slippage: parseFloat(slippageInput.value) / 100,
             risk_aversion: parseFloat(riskAversionInput.value),
@@ -166,12 +266,11 @@ document.addEventListener("DOMContentLoaded", () => {
 
         btnBacktest.disabled = true;
         btnTrain.disabled = true;
-        
-        // Show loading state in metrics
-        metricFinalWorth.textContent = "Running...";
+        resultsSection.classList.remove("hidden");
+        metricFinalWorth.textContent = "Processing...";
         metricAgentReturn.textContent = "Calculating...";
-        metricAgentReturn.className = "metric-value";
-        
+        metricAgentReturn.className = "value";
+
         try {
             const res = await fetch("/api/backtest", {
                 method: "POST",
@@ -182,73 +281,77 @@ document.addEventListener("DOMContentLoaded", () => {
 
             if (data.error) {
                 alert(data.error);
-                metricFinalWorth.textContent = formatCurrency(100000);
-                metricAgentReturn.textContent = "+0.00%";
-                btnBacktest.disabled = false;
-                btnTrain.disabled = false;
+                resultsSection.classList.add("hidden");
                 return;
             }
 
-            // --- Update Top Metrics ---
+            lastBacktestResult = data; // Cache data for scoreboard upload
+
+            // Update top cards
             metricFinalWorth.textContent = formatCurrency(data.metrics.final_net_worth);
             metricAgentReturn.textContent = formatPercent(data.metrics.total_return_pct);
+            
+            // Neon status highlights
             if (data.metrics.total_return_pct >= 0) {
-                metricAgentReturn.className = "metric-value positive";
+                metricAgentReturn.className = "value positive";
+                resultsSection.style.borderColor = "var(--neon-green)";
+                resultsSection.style.boxShadow = "var(--glow-green)";
             } else {
-                metricAgentReturn.className = "metric-value negative";
+                metricAgentReturn.className = "value negative";
+                resultsSection.style.borderColor = "var(--neon-red)";
+                resultsSection.style.boxShadow = "0 0 15px rgba(244, 63, 94, 0.35)";
             }
+
             metricSharpe.textContent = data.metrics.sharpe_ratio.toFixed(4);
             metricDrawdown.textContent = `${data.metrics.max_drawdown_pct.toFixed(2)}%`;
 
-            // --- Update Footer Stats Row ---
+            // Update footer row
             statWinRate.textContent = `${data.metrics.win_rate_pct.toFixed(1)}%`;
             statTrades.textContent = data.metrics.total_trades;
             statFriction.textContent = formatCurrency(data.metrics.total_friction);
             statBenchmarkReturn.textContent = formatPercent(data.metrics.buy_hold_return_pct);
 
-            // --- Render Chart ---
-            renderCharts(data);
-
-            // --- Render Trade Table Logs ---
+            // Render chart and tables
+            renderChart(data);
             renderTradeTable(data.trades);
+            
+            // Scroll dynamically to results section
+            resultsSection.scrollIntoView({ behavior: 'smooth' });
 
         } catch (err) {
             console.error(err);
-            alert("Failed to fetch backtest results from backend server.");
+            alert("Error: Backtest request timed out or server crashed.");
+            resultsSection.classList.add("hidden");
         } finally {
             btnBacktest.disabled = false;
             btnTrain.disabled = false;
         }
-    };
+    });
 
-    // --- Chart Rendering Function ---
-    const renderCharts = (data) => {
+    const renderChart = (data) => {
         const ctx = document.getElementById("equity-chart").getContext("2d");
-        
         if (equityChartInstance) {
             equityChartInstance.destroy();
         }
 
-        // Setup dual-axis Chart.js representation
         equityChartInstance = new Chart(ctx, {
             type: 'line',
             data: {
                 labels: data.dates,
                 datasets: [
                     {
-                        label: 'RL Agent Equity Curve',
+                        label: 'My AI Agent (RL)',
                         data: data.agent_net_worth,
-                        borderColor: '#06b6d4',
+                        borderColor: '#00f0ff',
                         borderWidth: 2.5,
                         pointRadius: 0,
-                        pointHoverRadius: 4,
                         fill: false,
                         yAxisID: 'y'
                     },
                     {
                         label: 'Buy-and-Hold Benchmark',
                         data: data.benchmark_net_worth,
-                        borderColor: 'rgba(148, 163, 184, 0.45)',
+                        borderColor: 'rgba(189, 0, 255, 0.45)',
                         borderWidth: 1.5,
                         borderDash: [5, 5],
                         pointRadius: 0,
@@ -256,10 +359,10 @@ document.addEventListener("DOMContentLoaded", () => {
                         yAxisID: 'y'
                     },
                     {
-                        label: 'Target Asset Exposure',
-                        data: data.exposures.map(e => e * 100), // convert to %
-                        backgroundColor: 'rgba(6, 182, 212, 0.05)',
-                        borderColor: 'rgba(6, 182, 212, 0.15)',
+                        label: 'Market Position Exposure',
+                        data: data.exposures.map(e => e * 100),
+                        backgroundColor: 'rgba(0, 240, 255, 0.04)',
+                        borderColor: 'rgba(0, 240, 255, 0.12)',
                         borderWidth: 1,
                         type: 'bar',
                         yAxisID: 'y1',
@@ -271,31 +374,23 @@ document.addEventListener("DOMContentLoaded", () => {
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
-                interaction: {
-                    mode: 'index',
-                    intersect: false,
-                },
+                interaction: { mode: 'index', intersect: false },
                 plugins: {
                     legend: {
                         position: 'top',
-                        labels: {
-                            color: '#94a3b8',
-                            font: { family: 'Outfit', size: 12 }
-                        }
+                        labels: { color: '#94a3b8', font: { family: 'Outfit', size: 11 } }
                     },
                     tooltip: {
-                        backgroundColor: 'rgba(15, 23, 42, 0.9)',
-                        titleColor: '#f1f5f9',
+                        backgroundColor: 'rgba(13, 20, 38, 0.95)',
+                        titleColor: '#f8fafc',
                         bodyColor: '#94a3b8',
-                        borderColor: 'rgba(255, 255, 255, 0.1)',
+                        borderColor: 'rgba(255, 255, 255, 0.08)',
                         borderWidth: 1,
-                        padding: 12,
+                        padding: 10,
                         callbacks: {
                             label: function(context) {
                                 let label = context.dataset.label || '';
-                                if (label) {
-                                    label += ': ';
-                                }
+                                if (label) label += ': ';
                                 if (context.datasetIndex === 2) {
                                     label += `${context.raw.toFixed(0)}%`;
                                 } else {
@@ -309,22 +404,16 @@ document.addEventListener("DOMContentLoaded", () => {
                 scales: {
                     x: {
                         grid: { color: 'rgba(255, 255, 255, 0.02)' },
-                        ticks: { color: '#64748b', maxTicksLimit: 12 }
+                        ticks: { color: '#475569', maxTicksLimit: 10 }
                     },
                     y: {
                         position: 'left',
-                        grid: { color: 'rgba(255, 255, 255, 0.04)' },
+                        grid: { color: 'rgba(255, 255, 255, 0.03)' },
                         ticks: {
                             color: '#94a3b8',
-                            callback: function(value) {
-                                return '₹' + value.toLocaleString();
-                            }
+                            callback: (val) => '₹' + val.toLocaleString()
                         },
-                        title: {
-                            display: true,
-                            text: 'Portfolio Value (₹)',
-                            color: '#94a3b8'
-                        }
+                        title: { display: true, text: 'Portfolio Worth (₹)', color: '#94a3b8' }
                     },
                     y1: {
                         position: 'right',
@@ -332,36 +421,25 @@ document.addEventListener("DOMContentLoaded", () => {
                         max: 100,
                         grid: { drawOnChartArea: false },
                         ticks: {
-                            color: '#64748b',
-                            callback: function(value) { return value + '%'; }
+                            color: '#475569',
+                            callback: (val) => val + '%'
                         },
-                        title: {
-                            display: true,
-                            text: 'Exposure (%)',
-                            color: '#64748b'
-                        }
+                        title: { display: true, text: 'Exposure (%)', color: '#475569' }
                     }
                 }
             }
         });
     };
 
-    // --- Table Renderer ---
     const renderTradeTable = (trades) => {
         tradeLogBody.innerHTML = "";
-        
         if (!trades || trades.length === 0) {
-            tradeLogBody.innerHTML = `
-                <tr>
-                    <td colspan="7" class="text-center text-muted">No trades executed during this testing period.</td>
-                </tr>`;
+            tradeLogBody.innerHTML = `<tr><td colspan="7" class="text-center text-muted">No trades recorded during simulation.</td></tr>`;
             return;
         }
 
         trades.forEach(trade => {
             const tr = document.createElement("tr");
-            
-            // Format PnL cell
             let pnlHtml = "-";
             if (trade.pnl !== undefined && trade.pnl !== null) {
                 const pnlClass = trade.pnl >= 0 ? "text-positive" : "text-negative";
@@ -369,7 +447,6 @@ document.addEventListener("DOMContentLoaded", () => {
                 pnlHtml = `<span class="${pnlClass}">${pnlSign}${formatCurrency(trade.pnl)}</span>`;
             }
 
-            // Style Action Label
             let actionBadge = "hold";
             if (trade.action.includes("BUY")) actionBadge = "buy";
             if (trade.action.includes("SELL")) actionBadge = "sell";
@@ -387,6 +464,181 @@ document.addEventListener("DOMContentLoaded", () => {
         });
     };
 
-    // --- Initialise Dashboard ---
+
+    // ==========================================================================
+    // 6. SCOREBOARD / LEADERBOARD OPERATIONS
+    // ==========================================================================
+    async function loadScoreboard() {
+        scoreboardBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Syncing leaderboard database...</td></tr>`;
+        try {
+            const scores = await dbGetScores(10);
+            scoreboardBody.innerHTML = "";
+            if (scores.length === 0) {
+                scoreboardBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">No high scores published yet.</td></tr>`;
+                return;
+            }
+
+            scores.forEach((sc, index) => {
+                const tr = document.createElement("tr");
+                if (index === 0) tr.className = "top-rank-1";
+                
+                const dateStr = new Date(sc.timestamp).toLocaleDateString('en-IN', {
+                    month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+                });
+
+                tr.innerHTML = `
+                    <td><strong>#${index + 1}</strong></td>
+                    <td><span class="text-positive">${sc.ticker}</span></td>
+                    <td>${escapeHtml(sc.creator)}</td>
+                    <td><strong>${formatPercent(sc.total_return_pct)}</strong></td>
+                    <td>${sc.sharpe_ratio.toFixed(4)}</td>
+                    <td>${sc.max_drawdown_pct.toFixed(2)}%</td>
+                    <td>${formatCurrency(sc.total_friction)}</td>
+                    <td><small class="text-muted">${dateStr}</small></td>
+                `;
+                scoreboardBody.appendChild(tr);
+            });
+        } catch (e) {
+            console.error("Scoreboard fetch failed:", e);
+            scoreboardBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Failed to sync scoreboard database.</td></tr>`;
+        }
+    }
+
+    function escapeHtml(str) {
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    btnPublish.addEventListener("click", async () => {
+        if (!lastBacktestResult) {
+            alert("Please run a backtest simulation before publishing your results.");
+            return;
+        }
+
+        let creatorName = "Anonymous Creator";
+        if (currentUser) {
+            creatorName = currentUser.email ? currentUser.email.split("@")[0] : "QuantUser";
+        }
+
+        btnPublish.disabled = true;
+        btnPublish.innerHTML = `<i class="fa-solid fa-spinner fa-spin"></i> Saving...`;
+
+        const scoreObj = {
+            ticker: tickerSelect.value,
+            creator: creatorName,
+            total_return_pct: lastBacktestResult.metrics.total_return_pct,
+            sharpe_ratio: lastBacktestResult.metrics.sharpe_ratio,
+            max_drawdown_pct: lastBacktestResult.metrics.max_drawdown_pct,
+            total_friction: lastBacktestResult.metrics.total_friction
+        };
+
+        const success = await dbSaveScore(scoreObj);
+        
+        btnPublish.disabled = false;
+        btnPublish.innerHTML = `<i class="fa-solid fa-cloud-arrow-up"></i> Publish to Scoreboard`;
+
+        if (success) {
+            loadScoreboard();
+        } else {
+            alert("Scoreboard publish failed. Check developer console.");
+        }
+    });
+
+
+    // ==========================================================================
+    // 7. FIREBASE AUTH & GLASS MODAL MANAGEMENT
+    // ==========================================================================
+    const authModal = document.getElementById("auth-modal");
+    const btnLoginTrigger = document.getElementById("btn-login-trigger");
+    const btnCloseAuth = document.getElementById("btn-close-auth");
+    const authForm = document.getElementById("auth-form");
+    const authEmail = document.getElementById("auth-email");
+    const authPassword = document.getElementById("auth-password");
+    const btnAnonymous = document.getElementById("btn-anonymous");
+    const userProfileDiv = document.getElementById("user-profile");
+    const userDisplayNameSpan = document.getElementById("user-display-name");
+    const btnLogout = document.getElementById("btn-logout");
+
+    let currentUser = null;
+
+    btnLoginTrigger.addEventListener("click", () => authModal.classList.remove("hidden"));
+    btnCloseAuth.addEventListener("click", () => authModal.classList.add("hidden"));
+
+    if (useFirebase && auth) {
+        onAuthStateChanged(auth, (user) => {
+            updateUserUI(user);
+        });
+    } else {
+        const localUser = sessionStorage.getItem("niftyrl_mock_user");
+        if (localUser) {
+            updateUserUI({ email: localUser });
+        }
+    }
+
+    function updateUserUI(user) {
+        currentUser = user;
+        if (user) {
+            userDisplayNameSpan.textContent = user.email ? user.email.split("@")[0].toUpperCase() : "CREATOR";
+            userProfileDiv.classList.remove("hidden");
+            btnLoginTrigger.classList.add("hidden");
+            authModal.classList.add("hidden");
+        } else {
+            userProfileDiv.classList.add("hidden");
+            btnLoginTrigger.classList.remove("hidden");
+        }
+    }
+
+    authForm.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const email = authEmail.value.trim();
+        const password = authPassword.value;
+
+        if (useFirebase && auth) {
+            try {
+                const cred = await signInWithEmailAndPassword(auth, email, password);
+                updateUserUI(cred.user);
+            } catch (err) {
+                if (err.code === "auth/user-not-found" || err.code === "auth/invalid-credential") {
+                    try {
+                        const cred = await createUserWithEmailAndPassword(auth, email, password);
+                        updateUserUI(cred.user);
+                    } catch (signUpErr) {
+                        alert("Sign Up Error: " + signUpErr.message);
+                    }
+                } else {
+                    alert("Authentication Error: " + err.message);
+                }
+            }
+        } else {
+            sessionStorage.setItem("niftyrl_mock_user", email);
+            updateUserUI({ email: email });
+        }
+    });
+
+    btnAnonymous.addEventListener("click", async () => {
+        if (useFirebase && auth) {
+            try {
+                const cred = await signInAnonymously(auth);
+                updateUserUI(cred.user);
+            } catch (err) {
+                alert("Anonymous entry error: " + err.message);
+            }
+        } else {
+            sessionStorage.setItem("niftyrl_mock_user", "anonymous@niftyrl.dev");
+            updateUserUI({ email: "anonymous@niftyrl.dev" });
+        }
+    });
+
+    btnLogout.addEventListener("click", async () => {
+        if (useFirebase && auth) {
+            await signOut(auth);
+        } else {
+            sessionStorage.removeItem("niftyrl_mock_user");
+            updateUserUI(null);
+        }
+    });
+
+
+    // --- Initialise Operations ---
     loadTickers();
+    loadScoreboard();
 });
