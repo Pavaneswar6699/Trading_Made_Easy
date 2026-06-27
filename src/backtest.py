@@ -45,6 +45,8 @@ def run_backtest(
     initial_capital: float = 100_000.0,
     risk_free_rate: float = 0.065,
     save_image_path: str = "logs/backtest_results.png",
+    brokerage_pct: float = 0.0003,
+    slippage_pct: float = 0.0005,
 ) -> None:
     """Load a trained agent, simulate on hold-out test data, and plot performance."""
     project_root = Path(__file__).resolve().parent.parent
@@ -80,7 +82,13 @@ def run_backtest(
 
     # 3. Initialize test environment
     # Note: render_mode is None for fast execution; status is tracked in lists.
-    env = TradingEnv(test_df, initial_capital=initial_capital, render_mode=None)
+    env = TradingEnv(
+        test_df,
+        initial_capital=initial_capital,
+        brokerage_pct=brokerage_pct,
+        slippage_pct=slippage_pct,
+        render_mode=None,
+    )
     
     # 4. Load the PPO agent
     print("→ Loading trained model...")
@@ -189,6 +197,9 @@ def compute_backtest_metrics(
 
     win_rate = (profitable_trades / total_trades * 100) if total_trades > 0 else 0.0
 
+    # --- Total Friction Paid ---
+    total_friction = sum(trade.get("commission", 0.0) for trade in trade_log)
+
     return {
         "final_net_worth": final_net_worth,
         "total_return_pct": total_return_pct,
@@ -197,6 +208,7 @@ def compute_backtest_metrics(
         "max_drawdown_pct": max_drawdown_pct,
         "total_trades": total_trades,
         "win_rate_pct": win_rate,
+        "total_friction": total_friction,
     }
 
 
@@ -218,6 +230,7 @@ def print_summary_table(metrics: Dict[str, Any], ticker: str) -> None:
     print(f"║ {'Max Drawdown':<28s} │ {metrics['max_drawdown_pct']:>17.2f}% ║")
     print(f"║ {'Total Executed Trades':<28s} │ {metrics['total_trades']:>18d} ║")
     print(f"║ {'Trade Win Rate':<28s} │ {metrics['win_rate_pct']:>17.2f}% ║")
+    print(f"║ {'Total Transaction Costs':<28s} │ ₹{metrics['total_friction']:>18,.2f} ║")
     print("═" * 56 + "\n")
 
 
@@ -328,4 +341,19 @@ def plot_backtest_results(
 
 
 if __name__ == "__main__":
-    run_backtest()
+    import argparse
+    parser = argparse.ArgumentParser(description="Backtest PPO Trading Agent")
+    parser.add_argument("--ticker", type=str, default="RELIANCE.NS", help="NSE stock ticker")
+    parser.add_argument("--years", type=int, default=2, help="Years of data to download")
+    parser.add_argument("--model", type=str, default="models/best_model.zip", help="Path to trained model zip")
+    parser.add_argument("--brokerage", type=float, default=0.0003, help="Brokerage percentage (0.03% = 0.0003)")
+    parser.add_argument("--slippage", type=float, default=0.0005, help="Slippage percentage (0.05% = 0.0005)")
+    args = parser.parse_args()
+
+    run_backtest(
+        ticker=args.ticker,
+        data_years=args.years,
+        model_path=args.model,
+        brokerage_pct=args.brokerage,
+        slippage_pct=args.slippage,
+    )

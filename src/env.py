@@ -54,8 +54,10 @@ class TradingEnv(gym.Env):
         Starting cash in ₹.
     window_size : int, default 10
         Number of past trading days included in each observation.
-    transaction_cost_pct : float, default 0.001
-        One-way transaction cost as a fraction (0.1 %).
+    brokerage_pct : float, default 0.0003
+        Brokerage commission as a fraction (0.03 %).
+    slippage_pct : float, default 0.0005
+        Execution slippage as a fraction (0.05 %).
     render_mode : str or None
         Set to ``"human"`` to print status on every step.
     """
@@ -81,7 +83,8 @@ class TradingEnv(gym.Env):
         df: pd.DataFrame,
         initial_capital: float = 1_00_000.0,
         window_size: int = 10,
-        transaction_cost_pct: float = 0.001,
+        brokerage_pct: float = 0.0003,
+        slippage_pct: float = 0.0005,
         render_mode: Optional[str] = None,
     ) -> None:
         super().__init__()
@@ -98,7 +101,8 @@ class TradingEnv(gym.Env):
         self.df: pd.DataFrame = df.reset_index(drop=True)
         self.initial_capital: float = initial_capital
         self.window_size: int = window_size
-        self.transaction_cost_pct: float = transaction_cost_pct
+        self.brokerage_pct: float = brokerage_pct
+        self.slippage_pct: float = slippage_pct
         self.render_mode = render_mode
         self.n_features: int = len(self.FEATURE_COLS)
 
@@ -216,26 +220,37 @@ class TradingEnv(gym.Env):
             value_to_buy = target_value - current_value
             value_to_buy = min(value_to_buy, self.capital)  # bound by cash on hand
             
-            shares_to_buy = int(value_to_buy // (current_price * (1.0 + self.transaction_cost_pct)))
+            # Estimate shares to buy by accounting for execution price + slippage + taxes
+            # Approx cost multiplier: 1 + c_buy
+            cost_multiplier = 1.0 + self.brokerage_pct + 0.001 + 0.0000345 + 0.000001 + 0.00015 + self.slippage_pct + 0.18 * (self.brokerage_pct + 0.0000345)
+            shares_to_buy = int(value_to_buy // (current_price * cost_multiplier))
+            
             if shares_to_buy > 0:
                 cost_of_shares = shares_to_buy * current_price
-                commission = cost_of_shares * self.transaction_cost_pct
+                friction = self._calculate_frictions(cost_of_shares, is_buy=True)
                 
-                # update weighted average cost basis
-                total_cost_basis = self.shares_held * self.buy_price + cost_of_shares
-                self.shares_held += shares_to_buy
-                self.buy_price = total_cost_basis / self.shares_held
-                self.capital -= (cost_of_shares + commission)
+                # Check if we have enough cash to cover cost + friction
+                if cost_of_shares + friction > self.capital:
+                    shares_to_buy = max(0, int(self.capital // (current_price * cost_multiplier)))
+                    cost_of_shares = shares_to_buy * current_price
+                    friction = self._calculate_frictions(cost_of_shares, is_buy=True)
                 
-                # Log the trade
-                self.trade_log.append({
-                    "step": self.current_step,
-                    "action": f"BUY_ADD ({int(target_exposure * 100)}%)",
-                    "price": current_price,
-                    "shares": shares_to_buy,
-                    "commission": round(commission, 2),
-                    "capital_after": round(self.capital, 2),
-                })
+                if shares_to_buy > 0:
+                    # update weighted average cost basis
+                    total_cost_basis = self.shares_held * self.buy_price + cost_of_shares
+                    self.shares_held += shares_to_buy
+                    self.buy_price = total_cost_basis / self.shares_held
+                    self.capital -= (cost_of_shares + friction)
+                    
+                    # Log the trade
+                    self.trade_log.append({
+                        "step": self.current_step,
+                        "action": f"BUY_ADD ({int(target_exposure * 100)}%)",
+                        "price": current_price,
+                        "shares": shares_to_buy,
+                        "commission": round(friction, 2),
+                        "capital_after": round(self.capital, 2),
+                    })
 
         elif target_value < current_value:
             # SELL order to decrease exposure
@@ -249,8 +264,8 @@ class TradingEnv(gym.Env):
             if shares_to_sell > 0:
                 shares_to_sell = min(shares_to_sell, self.shares_held)
                 revenue = shares_to_sell * current_price
-                commission = revenue * self.transaction_cost_pct
-                net_revenue = revenue - commission
+                friction = self._calculate_frictions(revenue, is_buy=False)
+                net_revenue = revenue - friction
                 
                 # Realised PnL on the sold portion
                 cost_basis_sold = shares_to_sell * self.buy_price
@@ -269,7 +284,7 @@ class TradingEnv(gym.Env):
                     "action": f"SELL_REDUCE ({int(target_exposure * 100)}%)",
                     "price": current_price,
                     "shares": shares_to_sell,
-                    "commission": round(commission, 2),
+                    "commission": round(friction, 2),
                     "capital_after": round(self.capital, 2),
                     "pnl": round(realised_pnl, 2),
                 })
@@ -422,6 +437,32 @@ class TradingEnv(gym.Env):
         """
         idx = max(0, min(step, len(self.df) - 1))
         return float(self.df.loc[idx, "Close"])
+
+    # =====================================================================
+    #  _calculate_frictions()  — calculate NSE taxes, charges and slippage
+    # =====================================================================
+    def _calculate_frictions(self, trade_value: float, is_buy: bool) -> float:
+        """Calculate NSE transaction costs, taxes, and slippage for a trade.
+
+        Includes:
+            - Brokerage: percentage of trade value
+            - STT (Securities Transaction Tax): 0.1% on delivery
+            - Exchange Transaction Charges: 0.00345%
+            - SEBI Turnover Fees: 0.0001%
+            - GST: 18% on (Brokerage + Exchange Charges)
+            - Stamp Duty: 0.015% on BUY side only
+            - Slippage: percentage of trade value
+        """
+        brokerage = trade_value * self.brokerage_pct
+        stt = trade_value * 0.001
+        exchange_charges = trade_value * 0.0000345
+        sebi_fees = trade_value * 0.000001
+        gst = 0.18 * (brokerage + exchange_charges)
+        
+        stamp_duty = trade_value * 0.00015 if is_buy else 0.0
+        slippage = trade_value * self.slippage_pct
+        
+        return brokerage + stt + exchange_charges + sebi_fees + gst + stamp_duty + slippage
 
 
 # =========================================================================
