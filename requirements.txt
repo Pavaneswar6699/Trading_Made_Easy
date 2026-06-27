@@ -27,3 +27,7 @@ ipykernel>=6.29.0
 # Utilities
 tqdm>=4.66.0
 python-dotenv>=1.0.0
+
+# Web Dashboard
+fastapi>=0.110.0
+uvicorn>=0.28.0

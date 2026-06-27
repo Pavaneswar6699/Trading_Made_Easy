@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>NiftyRL — Deep Reinforcement Learning Trading Dashboard</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <!-- Chart.js -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    
+    <!-- Custom Style -->
+    <link rel="stylesheet" href="static/styles.css">
+</head>
+<body>
+    <div class="glass-bg-blur"></div>
+    <div class="dashboard-container">
+        
+        <!-- HEADER -->
+        <header class="app-header">
+            <div class="logo-area">
+                <i class="fa-solid fa-chart-line-up logo-icon"></i>
+                <div class="logo-text">
+                    <h1>NiftyRL</h1>
+                    <span>Intraday Quant Agent</span>
+                </div>
+            </div>
+            <div class="header-status">
+                <span class="status-indicator online"></span>
+                <span id="global-status-text">Backend Connected</span>
+            </div>
+        </header>
+
+        <!-- MAIN LAYOUT -->
+        <main class="dashboard-grid">
+            
+            <!-- LEFT PANEL: CONFIGURATION & TRAINING -->
+            <section class="panel-left">
+                
+                <!-- CARD: CONFIGURATION -->
+                <div class="card glass-card fade-in">
+                    <div class="card-header">
+                        <i class="fa-solid fa-sliders-simple icon-accent"></i>
+                        <h2>Agent Configuration</h2>
+                    </div>
+                    <div class="card-body">
+                        <form id="config-form">
+                            <!-- Ticker Select -->
+                            <div class="form-group">
+                                <label for="ticker-select">NSE Stock Asset</label>
+                                <select id="ticker-select" class="form-control">
+                                    <!-- Populated dynamically -->
+                                </select>
+                            </div>
+                            
+                            <!-- Parameters grid -->
+                            <div class="form-row">
+                                <div class="form-group col">
+                                    <label for="brokerage-input">Brokerage (%)</label>
+                                    <input type="number" id="brokerage-input" class="form-control" value="0.03" step="0.01" min="0">
+                                </div>
+                                <div class="form-group col">
+                                    <label for="slippage-input">Slippage (%)</label>
+                                    <input type="number" id="slippage-input" class="form-control" value="0.05" step="0.01" min="0">
+                                </div>
+                            </div>
+                            
+                            <div class="form-row">
+                                <div class="form-group col">
+                                    <label for="risk-aversion-input">Risk Aversion</label>
+                                    <input type="number" id="risk-aversion-input" class="form-control" value="0.10" step="0.01" min="0">
+                                </div>
+                                <div class="form-group col">
+                                    <label for="drawdown-coeff-input">Drawdown Coeff</label>
+                                    <input type="number" id="drawdown-coeff-input" class="form-control" value="0.05" step="0.01" min="0">
+                                </div>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+
+                <!-- CARD: TRAINING ARENA -->
+                <div class="card glass-card fade-in delay-1">
+                    <div class="card-header">
+                        <i class="fa-solid fa-brain-circuit icon-accent"></i>
+                        <h2>Training Controls</h2>
+                    </div>
+                    <div class="card-body">
+                        <div class="form-group">
+                            <label for="timesteps-input">Training Timesteps: <span id="timesteps-val" class="glow-value">50,000</span></label>
+                            <input type="range" id="timesteps-input" class="form-range" min="10000" max="300000" step="10000" value="50000">
+                        </div>
+                        <button id="btn-train" class="btn btn-primary w-full glow-btn">
+                            <i class="fa-solid fa-play"></i> Train RL Agent
+                        </button>
+                    </div>
+                </div>
+
+                <!-- CARD: LIVE PROGRESS STATUS -->
+                <div id="progress-card" class="card glass-card status-card hidden fade-in">
+                    <div class="card-header">
+                        <div class="header-flex">
+                            <h2><i class="fa-solid fa-arrows-spin fa-spin status-spin-icon"></i> Live Training Status</h2>
+                            <span id="progress-percentage" class="badge">0%</span>
+                        </div>
+                    </div>
+                    <div class="card-body">
+                        <div class="progress-bar-container">
+                            <div id="progress-bar-fill" class="progress-bar-fill"></div>
+                        </div>
+                        <div class="status-metrics">
+                            <div class="status-metric-box">
+                                <span class="metric-lbl">Step Count</span>
+                                <span id="status-step" class="metric-val">0</span>
+                            </div>
+                            <div class="status-metric-box">
+                                <span class="metric-lbl">Net Worth</span>
+                                <span id="status-worth" class="metric-val">₹1,00,000</span>
+                            </div>
+                        </div>
+                        <p id="status-message" class="status-message">Downloading data...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- RIGHT PANEL: BACKTEST & RESULTS -->
+            <section class="panel-right">
+                
+                <!-- CARD: BACKTEST ARENA -->
+                <div class="card glass-card fade-in delay-2">
+                    <div class="card-header header-with-btn">
+                        <div class="title-with-icon">
+                            <i class="fa-solid fa-chart-line icon-accent"></i>
+                            <h2>Performance Arena</h2>
+                        </div>
+                        <button id="btn-backtest" class="btn btn-secondary glow-btn-sec">
+                            <i class="fa-solid fa-chart-pie"></i> Run Backtest
+                        </button>
+                    </div>
+                    <div class="card-body">
+                        <!-- Key metrics cards -->
+                        <div class="metrics-grid">
+                            <div class="metric-card">
+                                <div class="metric-icon-box cyan"><i class="fa-solid fa-wallet"></i></div>
+                                <div class="metric-info">
+                                    <span class="metric-title">Portfolio Worth</span>
+                                    <span id="metric-final-worth" class="metric-value">₹1,00,000.00</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon-box green"><i class="fa-solid fa-percent"></i></div>
+                                <div class="metric-info">
+                                    <span class="metric-title">Agent Return</span>
+                                    <span id="metric-agent-return" class="metric-value">+0.00%</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon-box blue"><i class="fa-solid fa-scale-balanced"></i></div>
+                                <div class="metric-info">
+                                    <span class="metric-title">Sharpe Ratio</span>
+                                    <span id="metric-sharpe" class="metric-value">0.0000</span>
+                                </div>
+                            </div>
+                            <div class="metric-card">
+                                <div class="metric-icon-box red"><i class="fa-solid fa-arrow-trend-down"></i></div>
+                                <div class="metric-info">
+                                    <span class="metric-title">Max Drawdown</span>
+                                    <span id="metric-drawdown" class="metric-value">0.00%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Charts container -->
+                        <div class="charts-section">
+                            <div class="chart-wrapper">
+                                <canvas id="equity-chart"></canvas>
+                            </div>
+                        </div>
+                        
+                        <!-- Additional detail stats row -->
+                        <div class="additional-stats-bar">
+                            <div class="stat-item">
+                                <span class="stat-lbl">Win Rate:</span>
+                                <span id="stat-win-rate" class="stat-val">0.0%</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-lbl">Executed Trades:</span>
+                                <span id="stat-trades" class="stat-val">0</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-lbl">Total Transaction Frictions:</span>
+                                <span id="stat-friction" class="stat-val">₹0.00</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-lbl">Buy & Hold Benchmark:</span>
+                                <span id="stat-benchmark-return" class="stat-val">0.0%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CARD: TRADE LOG HISTORY -->
+                <div class="card glass-card fade-in delay-3">
+                    <div class="card-header">
+                        <i class="fa-solid fa-list-timeline icon-accent"></i>
+                        <h2>Trade Log History</h2>
+                    </div>
+                    <div class="card-body scroll-body">
+                        <div class="table-responsive">
+                            <table class="table-custom">
+                                <thead>
+                                    <tr>
+                                        <th>Step</th>
+                                        <th>Action</th>
+                                        <th>Execution Price</th>
+                                        <th>Shares Traded</th>
+                                        <th>Friction Paid</th>
+                                        <th>Realised PnL</th>
+                                        <th>Remaining Cash</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="trade-log-body">
+                                    <tr>
+                                        <td colspan="7" class="text-center text-muted">No trade history available. Run a backtest first.</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+            </section>
+            
+        </main>
+        
+        <!-- FOOTER -->
+        <footer class="app-footer">
+            <p>NiftyRL Intraday Agent Dashboard | Powered by stable-baselines3, FastAPI & Chart.js</p>
+        </footer>
+    </div>
+
+    <!-- Scripts -->
+    <script src="static/main.js"></script>
+</body>
+</html>
