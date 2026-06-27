@@ -1,0 +1,29 @@
+# RL Trading Agent — Dependencies
+# ================================
+
+# Core RL
+stable-baselines3>=2.3.0
+gymnasium>=0.29.0
+
+# Data & Finance
+yfinance>=0.2.40
+pandas>=2.2.0
+numpy>=1.26.0
+
+# Technical Indicators
+ta>=0.11.0
+
+# Visualization
+matplotlib>=3.9.0
+seaborn>=0.13.0
+
+# Experiment Tracking & Logging
+tensorboard>=2.16.0
+
+# Notebooks
+jupyterlab>=4.2.0
+ipykernel>=6.29.0
+
+# Utilities
+tqdm>=4.66.0
+python-dotenv>=1.0.0
