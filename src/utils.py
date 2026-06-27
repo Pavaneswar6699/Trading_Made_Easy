@@ -141,6 +141,7 @@ def fetch_stock_data(
     df = _add_macd(df)                        # adds MACD, MACD_Signal, MACD_Hist
     df = _add_bollinger_width(df)              # adds BB_Width
     df = _add_momentum(df, period=10)          # adds Momentum_10
+    df = _add_regimes(df)                      # adds Regime_0, Regime_1, Regime_2, Regime_3
 
     # --- Drop warm-up NaN rows produced by indicators --------------------
     df.dropna(inplace=True)
@@ -415,6 +416,31 @@ def _add_momentum(
         *df* with the momentum column appended.
     """
     df[col_name] = df[source].pct_change(periods=period)
+    return df
+
+
+def _add_regimes(df: pd.DataFrame) -> pd.DataFrame:
+    """Pre-compute volatility and trend regimes and add one-hot encoded columns.
+    
+    Regime categories:
+    - Regime_0: Low Volatility Bull (Trend = Up, Vol = Low)
+    - Regime_1: High Volatility Bull (Trend = Up, Vol = High)
+    - Regime_2: Low Volatility Bear (Trend = Down, Vol = Low)
+    - Regime_3: High Volatility Bear (Trend = Down, Vol = High)
+    """
+    # 1. Trend indicator: EMA_9 > EMA_21
+    trend_up = (df["EMA_9"] > df["EMA_21"]).astype(int)
+    
+    # 2. Volatility indicator: Bollinger Band width relative to its rolling median
+    rolling_median_bbw = df["BB_Width"].rolling(window=20, min_periods=1).median()
+    vol_high = (df["BB_Width"] > rolling_median_bbw).astype(int)
+    
+    # 3. Create one-hot columns (using astype(float) for neural network input)
+    df["Regime_0"] = ((trend_up == 1) & (vol_high == 0)).astype(np.float64)
+    df["Regime_1"] = ((trend_up == 1) & (vol_high == 1)).astype(np.float64)
+    df["Regime_2"] = ((trend_up == 0) & (vol_high == 0)).astype(np.float64)
+    df["Regime_3"] = ((trend_up == 0) & (vol_high == 1)).astype(np.float64)
+    
     return df
 
 

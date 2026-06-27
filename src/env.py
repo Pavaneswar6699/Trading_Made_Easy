@@ -74,6 +74,7 @@ class TradingEnv(gym.Env):
         "EMA_9", "EMA_21", "RSI_14", "VWAP",
         "MACD", "MACD_Signal", "MACD_Hist",
         "BB_Width", "Momentum_10",
+        "Regime_0", "Regime_1", "Regime_2", "Regime_3",
     ]
 
     # =====================================================================
