@@ -341,21 +341,49 @@
                 <i class="fa-solid fa-user-ninja text-cyan animate-pulse"></i>
                 <span>Varsity AI Tutor</span>
             </div>
-            <button id="btn-toggle-chat" class="chat-control-btn"><i class="fa-solid fa-chevron-up"></i></button>
+            <div class="header-controls">
+                <button id="btn-maximize-chat" class="chat-control-btn" title="Toggle Immersive Workspace"><i class="fa-solid fa-expand"></i></button>
+                <button id="btn-toggle-chat" class="chat-control-btn"><i class="fa-solid fa-chevron-up"></i></button>
+            </div>
         </div>
         <div class="chat-body" id="chat-body">
-            <div id="chat-messages" class="chat-messages">
-                <div class="message system">
-                    <p>Welcome! I'm your AI Quant Tutor. Ask me anything about risk management, Sharpe ratio, drawdowns, volatility regimes, or Zerodha Varsity lessons!</p>
+            <div class="chat-main-container">
+                <!-- Immersive Visual Paste/Drag side-panel (Only visible when maximized/immersive) -->
+                <div class="immersive-visual-panel" id="immersive-visual-panel">
+                    <div class="paste-zone" id="paste-zone">
+                        <i class="fa-solid fa-file-image paste-icon"></i>
+                        <h3>Immersive Visual Workspace</h3>
+                        <p>Paste any chart screenshot here directly using <strong>Cmd + V</strong> or <strong>Ctrl + V</strong>.</p>
+                        <p class="drop-hint">Or click to select a file from your computer.</p>
+                        <div id="paste-preview-container" class="paste-preview-container hidden">
+                            <img id="paste-preview-img" src="" alt="Chart Preview">
+                            <button id="btn-clear-preview" class="btn-clear-preview"><i class="fa-solid fa-xmark"></i> Remove</button>
+                        </div>
+                    </div>
                 </div>
-            </div>
-            <div class="chat-input-row">
-                <label for="chat-file-input" class="chat-attach-btn" title="Attach Chart Screenshot">
-                    <i class="fa-solid fa-paperclip"></i>
-                </label>
-                <input type="file" id="chat-file-input" class="hidden" accept="image/*">
-                <input type="text" id="chat-input" placeholder="Type a trading question..." autocomplete="off">
-                <button id="btn-send-chat" class="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                
+                <!-- Chat Feed Side-panel -->
+                <div class="chat-feed-panel">
+                    <div id="chat-messages" class="chat-messages">
+                        <div class="message system">
+                            <p>Welcome! I'm your AI Quant Tutor. Ask me anything about risk management, Sharpe ratio, drawdowns, volatility regimes, or Zerodha Varsity lessons!</p>
+                        </div>
+                    </div>
+                    <div class="chat-input-row">
+                        <label for="chat-file-input" class="chat-attach-btn" title="Attach Chart Screenshot">
+                            <i class="fa-solid fa-paperclip"></i>
+                        </label>
+                        <input type="file" id="chat-file-input" class="hidden" accept="image/*">
+                        
+                        <!-- Voice microphone button -->
+                        <button id="btn-voice-chat" class="chat-voice-btn" title="Speak to AI (Voice input)">
+                            <i class="fa-solid fa-microphone"></i>
+                        </button>
+                        
+                        <input type="text" id="chat-input" placeholder="Type a trading question..." autocomplete="off">
+                        <button id="btn-send-chat" class="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>

@@ -610,6 +610,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const aiTutorWidget = document.getElementById("ai-tutor-widget");
     const chatHeader = document.getElementById("chat-header");
     const btnToggleChat = document.getElementById("btn-toggle-chat");
+    const btnMaximizeChat = document.getElementById("btn-maximize-chat");
+    const btnVoiceChat = document.getElementById("btn-voice-chat");
+    const pasteZone = document.getElementById("paste-zone");
+    const pastePreviewContainer = document.getElementById("paste-preview-container");
+    const pastePreviewImg = document.getElementById("paste-preview-img");
+    const btnClearPreview = document.getElementById("btn-clear-preview");
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
     const btnSendChat = document.getElementById("btn-send-chat");
@@ -621,6 +627,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const icon = btnToggleChat.querySelector("i");
         if (aiTutorWidget.classList.contains("minimized")) {
             icon.className = "fa-solid fa-chevron-up";
+            aiTutorWidget.classList.remove("immersive");
+            const maxIcon = btnMaximizeChat.querySelector("i");
+            if (maxIcon) maxIcon.className = "fa-solid fa-expand";
         } else {
             icon.className = "fa-solid fa-chevron-down";
             // Scroll messages
@@ -631,6 +640,87 @@ document.addEventListener("DOMContentLoaded", () => {
     btnToggleChat.addEventListener("click", (e) => {
         e.stopPropagation(); // prevent header click duplicate firing
         toggleChat();
+    });
+
+    // Maximize/Immersive Chat workspace toggle
+    const toggleImmersive = (e) => {
+        e.stopPropagation();
+        if (aiTutorWidget.classList.contains("minimized")) {
+            aiTutorWidget.classList.remove("minimized");
+            const icon = btnToggleChat.querySelector("i");
+            if (icon) icon.className = "fa-solid fa-chevron-down";
+        }
+        aiTutorWidget.classList.toggle("immersive");
+        const maxIcon = btnMaximizeChat.querySelector("i");
+        if (maxIcon) {
+            if (aiTutorWidget.classList.contains("immersive")) {
+                maxIcon.className = "fa-solid fa-compress";
+            } else {
+                maxIcon.className = "fa-solid fa-expand";
+            }
+        }
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    };
+    btnMaximizeChat.addEventListener("click", toggleImmersive);
+
+    // Speech Recognition (Voice Transcriber)
+    let recognition = null;
+    let isRecording = false;
+
+    if (window.SpeechRecognition || window.webkitSpeechRecognition) {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        recognition = new SpeechRecognition();
+        recognition.continuous = false;
+        recognition.interimResults = false;
+        recognition.lang = "en-US";
+
+        recognition.onstart = () => {
+            isRecording = true;
+            btnVoiceChat.classList.add("recording");
+            btnVoiceChat.querySelector("i").className = "fa-solid fa-microphone-lines animate-pulse";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript;
+            chatInput.value = (chatInput.value + " " + transcript).trim();
+        };
+
+        recognition.onerror = (e) => {
+            console.error("Speech recognition error", e);
+            stopRecording();
+        };
+
+        recognition.onend = () => {
+            stopRecording();
+        };
+    }
+
+    const stopRecording = () => {
+        isRecording = false;
+        btnVoiceChat.classList.remove("recording");
+        btnVoiceChat.querySelector("i").className = "fa-solid fa-microphone";
+        if (recognition) recognition.stop();
+    };
+
+    const startRecording = () => {
+        if (!recognition) {
+            alert("Voice transcription is not supported in this browser. Please use Chrome, Safari or Brave.");
+            return;
+        }
+        try {
+            recognition.start();
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    btnVoiceChat.addEventListener("click", (e) => {
+        e.stopPropagation();
+        if (isRecording) {
+            stopRecording();
+        } else {
+            startRecording();
+        }
     });
 
     // Send chat message
@@ -674,18 +764,32 @@ document.addEventListener("DOMContentLoaded", () => {
         }
     };
 
-
     btnSendChat.addEventListener("click", sendChatMessage);
     chatInput.addEventListener("keypress", (e) => {
         if (e.key === "Enter") sendChatMessage();
     });
 
-    // File change handler for chart uploads
-    chatFileInput.addEventListener("change", async (e) => {
-        const file = e.target.files[0];
+    // Share visual chart uploads from file, drag & drop, or clipboard paste
+    const handleVisualChartUpload = async (file) => {
         if (!file) return;
 
-        appendMessage("user", `📷 Sent image: <strong>${escapeHtml(file.name)}</strong>`);
+        // Auto-expand visual workspace
+        if (aiTutorWidget.classList.contains("minimized")) {
+            toggleChat();
+        }
+        aiTutorWidget.classList.add("immersive");
+        const maxIcon = btnMaximizeChat.querySelector("i");
+        if (maxIcon) maxIcon.className = "fa-solid fa-compress";
+
+        // Render preview image
+        const previewReader = new FileReader();
+        previewReader.onload = () => {
+            pastePreviewImg.src = previewReader.result;
+            pastePreviewContainer.classList.remove("hidden");
+        };
+        previewReader.readAsDataURL(file);
+
+        appendMessage("user", `📷 Sent image: <strong>${escapeHtml(file.name || "Clipboard Screenshot")}</strong>`);
         
         // Show loader message
         appendMessage("tutor", `<i class="fa-solid fa-spinner fa-spin"></i> Analyzing chart details...`);
@@ -703,7 +807,9 @@ document.addEventListener("DOMContentLoaded", () => {
                 
                 // Remove loader message
                 const msgList = chatMessages.querySelectorAll(".message");
-                msgList[msgList.length - 1].remove();
+                if (msgList.length > 0) {
+                    msgList[msgList.length - 1].remove();
+                }
 
                 if (data.status === "success") {
                     const adviceHtml = `
@@ -727,15 +833,58 @@ document.addEventListener("DOMContentLoaded", () => {
             } catch (err) {
                 console.error(err);
                 const msgList = chatMessages.querySelectorAll(".message");
-                msgList[msgList.length - 1].remove();
+                if (msgList.length > 0) {
+                    msgList[msgList.length - 1].remove();
+                }
                 appendMessage("tutor", "Unable to establish connection to the AI analysis runner.");
             }
         };
         reader.readAsDataURL(file);
-        
-        // Reset file input value so same file can be selected again
+    };
+
+    // File change handler
+    chatFileInput.addEventListener("change", (e) => {
+        handleVisualChartUpload(e.target.files[0]);
         chatFileInput.value = "";
     });
+
+    // Paste handler for document
+    document.addEventListener("paste", (e) => {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let item of items) {
+            if (item.type.indexOf("image") === 0) {
+                const file = item.getAsFile();
+                handleVisualChartUpload(file);
+            }
+        }
+    });
+
+    // Clear preview image button
+    btnClearPreview.addEventListener("click", (e) => {
+        e.stopPropagation();
+        pastePreviewContainer.classList.add("hidden");
+        pastePreviewImg.src = "";
+    });
+
+    // Drag and drop event handling
+    pasteZone.addEventListener("dragover", (e) => {
+        e.preventDefault();
+        pasteZone.classList.add("dragover");
+    });
+    pasteZone.addEventListener("dragleave", () => {
+        pasteZone.classList.remove("dragover");
+    });
+    pasteZone.addEventListener("drop", (e) => {
+        e.preventDefault();
+        pasteZone.classList.remove("dragover");
+        if (e.dataTransfer.files.length > 0) {
+            handleVisualChartUpload(e.dataTransfer.files[0]);
+        }
+    });
+    pasteZone.addEventListener("click", () => {
+        chatFileInput.click();
+    });
+
 
     function appendMessage(sender, msgText) {
         const msgDiv = document.createElement("div");
