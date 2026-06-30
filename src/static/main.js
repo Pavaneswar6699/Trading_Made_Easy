@@ -722,6 +722,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function getTutorResponse(query) {
         const cleanQuery = query.toLowerCase();
 
+        if (cleanQuery.includes("website") || cleanQuery.includes("understand") || cleanQuery.includes("explain") || cleanQuery.includes("how") || cleanQuery.includes("operate") || cleanQuery.includes("use")) {
+            return "This website is an **AI Trading Laboratory** designed to train and test intelligent agents on Indian stocks. Here is how to use it in 3 steps:\n\n1. **Step 1 (Settings)**: Select an asset and transaction cost values. Transaction cost values act as a friction fee on trades.\n2. **Step 2 (Train)**: Adjust training steps and click 'Start Agent Training'. The AI runs simulations to find the best rules.\n3. **Step 3 (Test)**: Click 'Run Backtest Simulation' to see the AI's performance vs. holding the asset.\n\n*Tip: Turn on 'Learn Varsity Mode' in the header to show tips on each step, or upload a chart screenshot using the paperclip clip icon!*";
+        }
         if (cleanQuery.includes("sharpe")) {
             return "The **Sharpe Ratio** (Varsity Module 9) measures risk-adjusted return. A Sharpe ratio above 1.0 means the agent earns enough return to justify the stock's volatility. In Step 1, adjusting settings affects your agent's Sharpe outcome.";
         }
