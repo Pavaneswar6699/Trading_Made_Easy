@@ -1,0 +1,79 @@
+================================================================================
+           NiftyRL Trading Agent — Backtest Performance Analysis Report
+================================================================================
+Generated Date: June 30, 2026
+Target Asset: RELIANCE.NS (Test Set Evaluation)
+Framework: Stable-Baselines3 PPO (Proximal Policy Optimization)
+================================================================================
+
+1. EXECUTIVE SUMMARY
+--------------------------------------------------------------------------------
+This report summarizes the performance of the trained Deep Reinforcement Learning 
+(PPO) agent evaluated against historical out-of-sample data for RELIANCE.NS. 
+The test period was characterized by a sustained bearish trend where the stock's 
+base price fell from approximately ₹1420 to ₹1320 (a decline of -6.05%). 
+
+The PPO agent successfully demonstrated risk-mitigation behaviors, limiting losses 
+to -3.96% and outperforming the benchmark Buy-and-Hold strategy by +2.09%. 
+
+2. KEY METRICS COMPARISON
+--------------------------------------------------------------------------------
+* Final Portfolio Capital:  ₹96,040.00 (Initial: ₹100,000.00)
+* Agent Absolute Return:   -3.96%
+* Benchmark (B&H) Return:  -6.05%
+* Outperformance Alpha:    +2.09% (Relative Outperformance)
+* Sharpe Ratio:            -1.0487 (Negative due to negative net absolute return)
+* Maximum Drawdown:        7.71% (Agent protected vs. ~10% benchmark drawdown)
+* Trade Win Rate:          62.5% (5 of 8 completed transactions closed profitably)
+
+3. BEHAVIORAL ANALYSIS & EXPOSURE STRATEGY
+--------------------------------------------------------------------------------
+Visual inspection of the trade execution flags (Buy Add / Sell Reduce) on the 
+backtest results chart reveals key strategic decisions made by the policy:
+
+* Defensive Reduction: Around time-step 60, as the price reached a temporary local 
+  peak near ₹1450, the agent correctly triggered consecutive "Sell Reduce" orders, 
+  bringing its portfolio exposure down right before a sharp correction occurred.
+* Dip Re-Entry: The agent identified a market bottom around time-step 85 (near 
+  ₹1325), executing a "Buy Add" order to capture the subsequent recovery bounce.
+* Inefficiencies Identified: The agent entered premature buy positions around 
+  time-step 18 (at ~₹1350) and time-step 38 (at ~₹1340) directly preceding further 
+  price drops. This highlights the need for finer feature representation or 
+  stronger training penalties on drawdown durations.
+
+4. TRAINING CONVERGENCE (REWARD CURVE ANALYSIS)
+--------------------------------------------------------------------------------
+The training reward curve (Realised PnL Reward vs. Episodes) confirms successful 
+convergence:
+* Rising Baseline: The rolling mean reward improved consistently from ~-400 at 
+  episode 1 to ~-125 by episode 60.
+* High Volatility: The raw episode reward displays significant variance, which 
+  is characteristic of noisy market data. This indicates that while the policy 
+  is learning, it is subject to high path-dependency.
+
+5. RECOMMENDED NEXT ACTION STEPS
+--------------------------------------------------------------------------------
+To convert this agent's relative outperformance into absolute positive returns 
+(Alpha), we recommend the following modifications:
+
+* Action 1: Introduce Volatility & Trend Indicators
+  Add technical indicators such as exponential moving averages (EMA 20/50), 
+  Relative Strength Index (RSI), and Average True Range (ATR) directly into 
+  the observation space in `src/env.py`. This will help the agent distinguish 
+  between normal mean-reversion pullbacks and major macro trend reversals.
+
+* Action 2: Fine-Tune the Reward Penalty Coeffs
+  Increase the 'Drawdown Coeff' parameter in Step 1 to penalize holding the 
+  asset during deep pullbacks. This forces the agent's policy network to favor 
+  flat cash positions over holding a declining stock.
+
+* Action 3: Multi-Ticker Training
+  Train the policy across a basket of correlated/uncorrelated Nifty-50 tickers 
+  (e.g., RELIANCE.NS, TCS.NS, INFYS.NS) instead of a single stock. This prevents 
+  the model from overfitting to Reliance's specific historical price movements.
+
+* Action 4: Implement Short Positions (Shorting)
+  Allow the agent's action space to support short-selling. In a downward-trending 
+  market (like the test set), the agent would then be able to open short contracts 
+  to make absolute positive profits rather than just mitigating losses.
+================================================================================

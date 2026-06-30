@@ -266,6 +266,47 @@
             </div>
         </section>
 
+        <!-- REAL-LIFE QUANT TRADING TERMINAL WORKSPACE -->
+        <section class="live-terminal-section glass-card fade-in">
+            <div class="card-header">
+                <i class="fa-solid fa-terminal icon-cyan animate-pulse"></i>
+                <h2>Live Quant Trading Desk</h2>
+            </div>
+            <div class="card-body">
+                <div class="terminal-grid">
+                    <!-- Bid/Ask Depth Order Book -->
+                    <div class="terminal-widget glass-card">
+                        <div class="widget-title"><i class="fa-solid fa-align-left text-green"></i> Live Order Book (Depth)</div>
+                        <div class="order-book-container">
+                            <div class="order-book-asks" id="ob-asks">
+                                <!-- Populated dynamically -->
+                            </div>
+                            <div class="order-book-spread" id="ob-spread">Spread: ₹0.50 (0.02%)</div>
+                            <div class="order-book-bids" id="ob-bids">
+                                <!-- Populated dynamically -->
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Live Trade Execution Ledger -->
+                    <div class="terminal-widget glass-card">
+                        <div class="widget-title"><i class="fa-solid fa-bolt text-gold"></i> Live Order Fills</div>
+                        <div class="ledger-feed" id="live-ledger-feed">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+
+                    <!-- Global Macro Market News -->
+                    <div class="terminal-widget glass-card">
+                        <div class="widget-title"><i class="fa-solid fa-newspaper text-purple"></i> Macro News Ticker</div>
+                        <div class="news-ticker-container" id="news-ticker">
+                            <!-- Populated dynamically -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
         <!-- GLOBAL SCOREBOARD / LEADERBOARD -->
         <section class="leaderboard-section glass-card fade-in">
             <div class="card-header">

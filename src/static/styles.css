@@ -1223,3 +1223,157 @@ select.form-control option {
     gap: 12px;
 }
 
+/* Live Quant Trading Desk Terminal Styles */
+.live-terminal-section {
+    margin-top: 24px;
+    background: rgba(4, 6, 12, 0.85);
+}
+
+.terminal-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .terminal-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.terminal-widget {
+    background: rgba(13, 20, 38, 0.6) !important;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    border-radius: 12px;
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    height: 260px;
+    overflow: hidden;
+}
+
+.widget-title {
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+    padding-bottom: 8px;
+}
+
+/* Order Book styling */
+.order-book-container {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    justify-content: space-between;
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+}
+
+.ob-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 2px 4px;
+    border-radius: 4px;
+    transition: var(--transition-smooth);
+}
+
+.ob-row.ask:hover { background: rgba(244, 63, 94, 0.08); }
+.ob-row.bid:hover { background: rgba(16, 185, 129, 0.08); }
+
+.ob-price { font-weight: 600; }
+.ob-price.ask { color: var(--neon-red); }
+.ob-price.bid { color: var(--neon-green); }
+
+.ob-size { color: var(--text-secondary); }
+
+.order-book-spread {
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-muted);
+    padding: 4px 0;
+    border-top: 1px dashed rgba(255,255,255,0.06);
+    border-bottom: 1px dashed rgba(255,255,255,0.06);
+    margin: 4px 0;
+    font-weight: 700;
+}
+
+/* Ledger styling */
+.ledger-feed {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    overflow-y: auto;
+    height: 100%;
+    padding-right: 4px;
+}
+
+.ledger-item {
+    font-size: 0.78rem;
+    line-height: 1.35;
+    padding: 6px 8px;
+    background: rgba(255, 255, 255, 0.02);
+    border-radius: 6px;
+    border-left: 3px solid transparent;
+}
+
+.ledger-item .time { color: var(--text-muted); margin-right: 4px; }
+.ledger-item .action.buy { color: var(--neon-green); font-weight: 700; }
+.ledger-item .action.sell { color: var(--neon-red); font-weight: 700; }
+
+.ledger-item.buy-item { border-left-color: var(--neon-green); }
+.ledger-item.sell-item { border-left-color: var(--neon-red); }
+
+.ledger-item .tag {
+    float: right;
+    font-size: 0.65rem;
+    color: var(--text-muted);
+    background: rgba(255,255,255,0.04);
+    padding: 1px 4px;
+    border-radius: 4px;
+}
+
+/* News Ticker styling */
+.news-ticker-container {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    overflow-y: auto;
+    height: 100%;
+    padding-right: 4px;
+}
+
+.news-item {
+    font-size: 0.78rem;
+    line-height: 1.4;
+    padding: 8px;
+    background: rgba(255,255,255,0.01);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.03);
+    transition: var(--transition-smooth);
+}
+
+.news-item:hover {
+    border-color: rgba(255, 255, 255, 0.06);
+    background: rgba(255, 255, 255, 0.03);
+}
+
+.news-item .tag {
+    font-size: 0.65rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    padding: 2px 6px;
+    border-radius: 4px;
+    margin-right: 6px;
+}
+
+.news-item .tag.bullish { background: rgba(16, 185, 129, 0.15); color: var(--neon-green); }
+.news-item .tag.bearish { background: rgba(244, 63, 94, 0.15); color: var(--neon-red); }
+.news-item .tag.macro { background: rgba(59, 130, 246, 0.15); color: var(--neon-blue); }
+
+

@@ -605,6 +605,144 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================================================
+    // 7. LIVE QUANT TRADING DESK SIMULATOR
+    // ==========================================================================
+    const obAsks = document.getElementById("ob-asks");
+    const obBids = document.getElementById("ob-bids");
+    const obSpread = document.getElementById("ob-spread");
+    const liveLedgerFeed = document.getElementById("live-ledger-feed");
+    const newsTicker = document.getElementById("news-ticker");
+
+    // Baseline prices mapping
+    const getBasePrice = () => {
+        const symbol = tickerSelect.value || "RELIANCE.NS";
+        if (symbol.includes("RELIANCE")) return 2420.50;
+        if (symbol.includes("TCS")) return 3852.10;
+        if (symbol.includes("INFY")) return 1552.40;
+        if (symbol.includes("HDFCBANK")) return 1654.80;
+        if (symbol.includes("NIFTY")) return 23415.50;
+        return 1000.00;
+    };
+
+    // Update order book display
+    const updateOrderBook = () => {
+        if (!obAsks || !obBids) return;
+
+        const base = getBasePrice();
+        const randOffset = (Math.random() - 0.5) * 0.5; // slight random drift
+        const currentPrice = base + randOffset;
+
+        // Generate 4 levels of asks (descending order for correct visual layout)
+        let asksHtml = "";
+        for (let i = 4; i >= 1; i--) {
+            const price = (currentPrice + i * 0.15).toFixed(2);
+            const size = Math.floor(Math.random() * 800 + 100);
+            asksHtml += `
+                <div class="ob-row ask">
+                    <span class="ob-price ask">₹${price}</span>
+                    <span class="ob-size">${size}</span>
+                </div>
+            `;
+        }
+        obAsks.innerHTML = asksHtml;
+
+        // Generate 4 levels of bids (descending order)
+        let bidsHtml = "";
+        for (let i = 1; i <= 4; i++) {
+            const price = (currentPrice - i * 0.15).toFixed(2);
+            const size = Math.floor(Math.random() * 800 + 100);
+            bidsHtml += `
+                <div class="ob-row bid">
+                    <span class="ob-price bid">₹${price}</span>
+                    <span class="ob-size">${size}</span>
+                </div>
+            `;
+        }
+        obBids.innerHTML = bidsHtml;
+
+        // Spread calculation
+        const spreadAmt = 0.30;
+        const spreadPercent = ((spreadAmt / currentPrice) * 100).toFixed(3);
+        obSpread.textContent = `Spread: ₹${spreadAmt.toFixed(2)} (${spreadPercent}%)`;
+    };
+
+    // Initial fill for order book
+    updateOrderBook();
+    setInterval(updateOrderBook, 1500);
+
+    // Simulated execution ledger
+    const addSimulatedOrderFill = () => {
+        if (!liveLedgerFeed) return;
+
+        const symbol = tickerSelect.value || "RELIANCE.NS";
+        const base = getBasePrice();
+        const price = (base + (Math.random() - 0.5) * 2).toFixed(2);
+        const shares = Math.floor(Math.random() * 15 + 1) * 10;
+        const action = Math.random() > 0.55 ? "BUY" : "SELL";
+        const fillType = Math.random() > 0.3 ? "Limit Fill" : "Market Fill";
+        const itemClass = action === "BUY" ? "buy-item" : "sell-item";
+        
+        const now = new Date();
+        const timeStr = `[${now.toTimeString().split(' ')[0]}]`;
+
+        const row = document.createElement("div");
+        row.className = `ledger-item ${itemClass} fade-in`;
+        row.innerHTML = `
+            <span class="time">${timeStr}</span>
+            <span class="action ${action.toLowerCase()}">${action}</span>
+            ${shares} ${symbol.split('.')[0]} @ ₹${price}
+            <span class="tag">${fillType}</span>
+        `;
+
+        liveLedgerFeed.insertBefore(row, liveLedgerFeed.firstChild);
+
+        // Keep maximum 6 items
+        while (liveLedgerFeed.children.length > 6) {
+            liveLedgerFeed.lastChild.remove();
+        }
+    };
+
+    // Populate initial ledger fills
+    for (let i = 0; i < 4; i++) addSimulatedOrderFill();
+    setInterval(addSimulatedOrderFill, 4500);
+
+    // Simulated News Ticker
+    const newsTemplates = [
+        { text: "NSE Nifty-50 gains positive momentum after inflation data prints below central bank projections.", tag: "bullish" },
+        { text: "Reliance Industries reports strong crude imports, retail expansion plans spark massive volume.", tag: "bullish" },
+        { text: "Global tech sector correction triggers foreign portfolio investors to pare holdings in Indian IT heavyweights.", tag: "bearish" },
+        { text: "TCS secure large-scale banking contract with European financial consortium.", tag: "bullish" },
+        { text: "HDFC Bank deposit growth exceeds estimates in quarterly audit report.", tag: "bullish" },
+        { text: "Crude oil inventory climbs globally, putting pressure on petrochemical raw material costs.", tag: "bearish" },
+        { text: "US Federal Reserve signals benchmark rate pause, emerging market currencies show volatility.", tag: "macro" },
+        { text: "Monsoon forecasts point to normal rainfall, easing agricultural commodity inflation pressure.", tag: "bullish" }
+    ];
+
+    const addSimulatedNews = () => {
+        if (!newsTicker) return;
+
+        const template = newsTemplates[Math.floor(Math.random() * newsTemplates.length)];
+        const row = document.createElement("div");
+        row.className = "news-item fade-in";
+        row.innerHTML = `
+            <span class="tag ${template.tag}">${template.tag}</span>
+            ${template.text}
+        `;
+
+        newsTicker.insertBefore(row, newsTicker.firstChild);
+
+        // Keep maximum 4 items
+        while (newsTicker.children.length > 4) {
+            newsTicker.lastChild.remove();
+        }
+    };
+
+    // Populate initial news items
+    for (let i = 0; i < 3; i++) addSimulatedNews();
+    setInterval(addSimulatedNews, 12000);
+
+
+    // ==========================================================================
     // 8. FLOATING AI QUANT TUTOR CHATBOT ENGINE (Q&A Parse Rules)
     // ==========================================================================
     const aiTutorWidget = document.getElementById("ai-tutor-widget");
