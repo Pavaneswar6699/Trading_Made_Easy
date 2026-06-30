@@ -892,11 +892,33 @@ select.form-control option {
     padding: 12px;
     border-top: 1px solid var(--color-border);
     display: flex;
+    align-items: center;
     gap: 8px;
     background: rgba(13, 20, 38, 0.4);
 }
 
-.chat-input-row input {
+.chat-attach-btn {
+    width: 32px;
+    height: 32px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 1.05rem;
+    transition: var(--transition-smooth);
+    border-radius: 6px;
+    border: 1px solid var(--color-border);
+    background: rgba(255, 255, 255, 0.01);
+}
+
+.chat-attach-btn:hover {
+    color: var(--neon-cyan);
+    border-color: rgba(0, 240, 255, 0.2);
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.15);
+}
+
+.chat-input-row input[type="text"] {
     flex-grow: 1;
     background: rgba(255, 255, 255, 0.02);
     border: 1px solid var(--color-border);
@@ -909,7 +931,7 @@ select.form-control option {
     transition: var(--transition-smooth);
 }
 
-.chat-input-row input:focus {
+.chat-input-row input[type="text"]:focus {
     border-color: var(--neon-cyan);
 }
 

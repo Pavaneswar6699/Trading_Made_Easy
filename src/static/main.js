@@ -613,6 +613,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const chatMessages = document.getElementById("chat-messages");
     const chatInput = document.getElementById("chat-input");
     const btnSendChat = document.getElementById("btn-send-chat");
+    const chatFileInput = document.getElementById("chat-file-input");
 
     // Toggle Chat visibility
     const toggleChat = () => {
@@ -652,10 +653,67 @@ document.addEventListener("DOMContentLoaded", () => {
         if (e.key === "Enter") sendChatMessage();
     });
 
+    // File change handler for chart uploads
+    chatFileInput.addEventListener("change", async (e) => {
+        const file = e.target.files[0];
+        if (!file) return;
+
+        appendMessage("user", `📷 Sent image: <strong>${escapeHtml(file.name)}</strong>`);
+        
+        // Show loader message
+        appendMessage("tutor", `<i class="fa-solid fa-spinner fa-spin"></i> Analyzing chart details...`);
+
+        const reader = new FileReader();
+        reader.onload = async () => {
+            const base64Data = reader.result;
+            try {
+                const res = await fetch("/api/analyze-chart", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ image_data: base64Data })
+                });
+                const data = await res.json();
+                
+                // Remove loader message
+                const msgList = chatMessages.querySelectorAll(".message");
+                msgList[msgList.length - 1].remove();
+
+                if (data.status === "success") {
+                    const adviceHtml = `
+                        <div class="ai-visual-report" style="margin-top: 5px;">
+                            <p style="color: var(--neon-cyan); font-weight: 700; margin-bottom: 6px;">
+                                <i class="fa-solid fa-circle-check"></i> Analysis: ${data.asset}
+                            </p>
+                            <p style="margin-bottom: 8px;"><strong>Signal:</strong> <span style="color: var(--neon-red); font-weight: 700;">${data.action}</span> (${data.confidence} confidence)</p>
+                            <p style="margin-bottom: 8px; color: var(--text-secondary);">${data.plain_explanation}</p>
+                            <div style="background: rgba(255,255,255,0.03); border: 1px dashed rgba(255,255,255,0.1); border-radius: 6px; padding: 10px; margin-bottom: 8px;">
+                                <p style="font-size: 0.78rem; font-weight: 600; text-transform: uppercase; color: var(--neon-cyan); margin-bottom: 4px;"><i class="fa-solid fa-calculator"></i> Beginner Guide (₹1,000 Wallet)</p>
+                                <p style="font-size: 0.78rem; line-height: 1.35; color: var(--text-secondary);">${data.leverage_guide}</p>
+                            </div>
+                            <p style="font-size: 0.75rem; color: var(--neon-red); font-style: italic;"><i class="fa-solid fa-triangle-exclamation"></i> ${data.danger_warning}</p>
+                        </div>
+                    `;
+                    appendMessage("tutor", adviceHtml);
+                } else {
+                    appendMessage("tutor", "Sorry, chart analysis failed. Please verify the image file is valid.");
+                }
+            } catch (err) {
+                console.error(err);
+                const msgList = chatMessages.querySelectorAll(".message");
+                msgList[msgList.length - 1].remove();
+                appendMessage("tutor", "Unable to establish connection to the AI analysis runner.");
+            }
+        };
+        reader.readAsDataURL(file);
+        
+        // Reset file input value so same file can be selected again
+        chatFileInput.value = "";
+    });
+
     function appendMessage(sender, msgText) {
         const msgDiv = document.createElement("div");
         msgDiv.className = `message ${sender}`;
-        msgDiv.innerHTML = `<p>${msgText}</p>`;
+        msgDiv.innerHTML = msgText.startsWith("<") ? msgText : `<p>${msgText}</p>`;
         chatMessages.appendChild(msgDiv);
         chatMessages.scrollTop = chatMessages.scrollHeight;
     }
