@@ -722,6 +722,9 @@ document.addEventListener("DOMContentLoaded", () => {
     function getTutorResponse(query) {
         const cleanQuery = query.toLowerCase();
 
+        if (cleanQuery.includes("intraday") || cleanQuery.includes("help") || cleanQuery.includes("trade") || cleanQuery.includes("trading")) {
+            return "Yes, absolutely! I am a **fully automated, powerful Quant Advisor** built to guide your intraday trading decisions. Here is how I can directly help you:\n\n1. **Analyze Charts**: Click the paperclip icon below to attach any chart screenshot (like BTC/USDT or stocks). I will immediately scan it, tell you whether to **Buy** or **Sell**, and calculate your entry/exit targets.\n2. **Portfolio Leverage**: Tell me your capital size (e.g. ₹1,000) and target returns, and I will calculate the exact leverage settings and safety exits (Stop-Loss) to protect your money.\n3. **Optimal Parameters**: Ask me how to configure the Step 1 and Step 2 settings for your chosen asset to maximize Sharpe ratios.";
+        }
         if (cleanQuery.includes("website") || cleanQuery.includes("understand") || cleanQuery.includes("explain") || cleanQuery.includes("how") || cleanQuery.includes("operate") || cleanQuery.includes("use")) {
             return "This website is an **AI Trading Laboratory** designed to train and test intelligent agents on Indian stocks. Here is how to use it in 3 steps:\n\n1. **Step 1 (Settings)**: Select an asset and transaction cost values. Transaction cost values act as a friction fee on trades.\n2. **Step 2 (Train)**: Adjust training steps and click 'Start Agent Training'. The AI runs simulations to find the best rules.\n3. **Step 3 (Test)**: Click 'Run Backtest Simulation' to see the AI's performance vs. holding the asset.\n\n*Tip: Turn on 'Learn Varsity Mode' in the header to show tips on each step, or upload a chart screenshot using the paperclip clip icon!*";
         }
