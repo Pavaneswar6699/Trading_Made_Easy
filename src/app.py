@@ -328,7 +328,7 @@ async def api_analyze_chart(req: ChartAnalysisRequest):
         mime_type = header.split(";")[0].split(":")[1]
         image_bytes = base64.b64decode(base64_str)
         
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         
         prompt = (
             "Analyze this trading chart and return a structured JSON response for a beginner trader. "
@@ -387,7 +387,7 @@ async def api_analyze_chart(req: ChartAnalysisRequest):
 @app.post("/api/chat")
 async def api_chat_endpoint(req: ChatRequest):
     try:
-        model = genai.GenerativeModel("gemini-1.5-flash")
+        model = genai.GenerativeModel("gemini-2.5-flash")
         system_prompt = (
             "You are a friendly and professional Varsity AI Quant Tutor. "
             "Explain financial, quant, and trading concepts in simple, plain language suitable for absolute beginners. "
