@@ -40,23 +40,12 @@
 }
 
 body {
-    background-color: var(--color-bg);
+    background-color: #0b0f19;
     color: var(--text-primary);
     font-family: var(--font-body);
     min-height: 100vh;
     overflow-x: hidden;
     position: relative;
-}
-
-/* --- Background Particle Canvas --- */
-#bg-particle-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100vw;
-    height: 100vh;
-    z-index: 0;
-    pointer-events: none;
 }
 
 .app-container {

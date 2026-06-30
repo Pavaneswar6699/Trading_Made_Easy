@@ -1,119 +1,64 @@
 # NiftyRL — Intraday Trading Agent using Deep RL
 
-[![Python Version](https://img.shields.io/badge/python-3.9%2B-blue.svg)](https://www.python.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-
-An end-to-end framework for training and evaluating reinforcement learning agents to trade NSE Nifty-50 stocks. The framework leverages **Stable-Baselines3 (PPO)** and a custom **Gymnasium** environment to learn optimal long-only trading strategies from historical OHLCV data enriched with technical indicators.
+This repository contains my research codebase for training and evaluating reinforcement learning (RL) agents on NSE Nifty-50 stocks. The project uses a custom **Gymnasium** environment paired with **Stable-Baselines3 (PPO)** to experiment with reward shaping, transaction friction, and out-of-sample validation.
 
 ---
 
-## Architecture Overview
+## Why PPO? (Design Decisions & Hard Lessons)
 
-The system is decoupled into four modular layers: Data Ingestion, Environment Simulation, Policy Learning, and Evaluation/Backtesting.
+In the initial phases of this project, I experimented with Deep Q-Networks (DQN). However, DQN proved highly unstable: the policy suffered from severe value estimation spikes and frequently collapsed into repetitive buy-sell loops. 
 
-```
-  ┌────────────────────────────────────────────────────────┐
-  │                  Data Ingestion Layer                  │
-  │    (Daily OHLCV via yfinance + Indicator Pipeline)     │
-  └───────────────────────────┬────────────────────────────┘
-                              ▼
-  ┌────────────────────────────────────────────────────────┐
-  │              Gymnasium Trading Environment             │
-  │    - Observation: Last 10 days of normalized features   │
-  │    - Action Space: [Hold (0), Buy (1), Sell (2)]       │
-  │    - Reward Scheme: Realized PnL on position exit      │
-  └───────────────────────────┬────────────────────────────┘
-             ▲                │                 ▲
-             │ Observations   │ Actions         │ Metrics
-             │ & Rewards      │                 │ & Logs
-             ▼                ▼                 ▼
-  ┌────────────────────────────────────────────────────────┐
-  │                 Policy Learning Layer                  │
-  │           (Stable-Baselines3 PPO Agent)                │
-  └───────────────────────────┬────────────────────────────┘
-                              ▼
-  ┌────────────────────────────────────────────────────────┐
-  │                Evaluation & Backtesting                │
-  │    - EvalCallback: Periodic validation-set check       │
-  │    - TensorBoard: Real-time metric visualization       │
-  │    - backtest.py: Out-of-sample test set replay        │
-  └────────────────────────────────────────────────────────┘
-```
+I transitioned to **Proximal Policy Optimization (PPO)**. PPO’s clipped objective function prevents catastrophic policy updates, making it far more suited for noisy financial data. Even with PPO, I learned that the policy is incredibly sensitive to hyperparameter tuning—particularly the entropy coefficient (which controls exploration vs. exploitation). Setting the entropy coefficient too low causes the agent to quickly overfit to a single action sequence, while setting it too high leads to random trading.
 
 ---
 
-## Features
+## Technical Architecture & State Design
 
-* **Feature Engineering Pipeline:** Auto-downloads daily price series and computes Exponential Moving Averages (`EMA_9`, `EMA_21`), Relative Strength Index (`RSI_14` with Wilder's smoothing), and Volume-Weighted Average Price (`VWAP`).
-* **Robust Network Fallback:** Includes a synthetic data fallback mechanism (Geometric Brownian Motion) in the utility script to allow offline training/testing if Yahoo Finance is rate-limited or blocked.
-* **Custom Gymnasium Environment:**
-  * **Long-only position constraint:** The agent holds at most one binary position (all-in/all-out) at a time.
-  * **Normalized Observation Space:** Flattens a 10-day lookback window across 9 Z-score normalized features.
-  * **Realistic Reward Shaping:** Realized PnL on position sell, 0 otherwise, with a $-1$ penalty to discourage illegal actions (e.g. selling when flat).
-* **Automated Callbacks:** Logs training progress every 10,000 steps and saves the best model based on a 10% validation slice.
-* **Backtesting & Diagnostics:** Outputs metrics (Sharpe ratio, max drawdown, win rate) and visualizes performance against a Buy-and-Hold benchmark.
+The framework is structured into modular layers:
+1. **Data Ingestion (`src/utils.py`):** Automatically downloads daily price series via `yfinance` and computes basic technical features. If Yahoo Finance is rate-limited, it falls back to a Geometric Brownian Motion (GBM) simulation to allow offline verification.
+2. **Gymnasium Environment (`src/env.py`):** Implements a long-only position constraint (the agent holds either a 1.0 full position or 0.0 flat cash position). The state representation flattens a 10-day lookback window across normalized indicators.
+3. **Training & Callbacks (`src/train.py`):** Manages training over historical segments and saves model checkpoints.
 
 ---
 
-## Installation
+## The Reward Shaping Problem (What Didn't Work)
 
-Ensure you have Python 3.9+ installed. Clone the repository and install the dependencies:
-
-```bash
-pip install -r requirements.txt
-```
-
----
-
-## Usage
-
-### 1. Training the Agent
-Run the training script to fetch historical data, split it chronologically (80% Train, 10% Validation, 10% Test), train the PPO policy for 200,000 steps, and generate the learning curve.
-
-```bash
-python src/train.py
-```
-
-* **Outputs:**
-  * Best model checkpoint: `models/best_model.zip`
-  * Training reward curve: `logs/reward_curve.png`
-  * TensorBoard event logs: `logs/PPO_Reliance_1/`
-
-### 2. Backtesting the Agent
-Evaluate the trained model on the unseen 20% test slice (the portion from 80% to 100% of the timeline):
-
-```bash
-python src/backtest.py
-```
-
-* **Outputs:**
-  * Console print of the backtest summary table.
-  * Performance graph (Portfolio Growth vs. Benchmark): `logs/backtest_results.png`
+One of the biggest hurdles was defining a stable reward signal. 
+* **Attempt 1 (Real-Time Equity Changes):** I initially rewarded the agent on every step based on the change in net asset value (NAV). This caused the agent to panic and sell early during minor, healthy pullbacks because it was overly sensitive to intermediate noise.
+* **Attempt 2 (Realized PnL Only):** Next, I switched to rewarding the agent *only* when it closed a position (Realized PnL). This solved the early panic issue but introduced a sparse reward problem; the agent spent hundreds of steps receiving a reward of 0, making it very slow to converge.
+* **Current Setup:** I settled on rewarding realized PnL on exit, but combined it with a minor step-by-step drawdown penalty (`drawdown_coeff`) and action-space bounds. This penalizes the agent for sitting in losing positions for too long, but it remains a delicate balance.
 
 ---
 
-## Results
+## Backtest Performance & Critical Limitations
 
-Below is a baseline performance table obtained on the out-of-sample test set (e.g. `RELIANCE.NS` over the last 20% of the 2-year timeline):
+Below are the results obtained on a 20% out-of-sample test set for `RELIANCE.NS`:
 
 | Metric | RL Trading Agent | Buy-and-Hold Benchmark |
 | :--- | :---: | :---: |
-| **Total Return** | +4.58% | -9.15% |
-| **Sharpe Ratio (Rf=6.5%)** | 0.5573 | -0.9234 |
-| **Max Drawdown** | 8.39% | 15.42% |
-| **Total Trades** | 1 | — |
-| **Trade Win Rate** | 100.0% | — |
+| **Total Return** | -3.96% | -6.05% |
+| **Sharpe Ratio** | -1.0487 | -1.2504 |
+| **Max Drawdown** | 7.71% | ~10.00% |
+| **Total Trades** | 8 | — |
+
+### Crucial Limitations (Honest Analysis)
+1. **Sample Size Warning:** The backtest only executed **8 trades** during the test period. Calculating a Sharpe ratio or a win rate (62.5% here) on such a small number of trades is statistically meaningless. These metrics are reported here purely for pipeline validation, not as proof of trading efficacy.
+2. **The "Cash" Bias:** The apparent outperformance (+2.09% relative return) is not due to active, profitable trading. Instead, it is an artifact of the agent choosing to remain flat in cash during a major bearish downtrend. While capital preservation is a valid risk-mitigation strategy, the agent is not yet showing an ability to find positive alpha in down-markets.
+3. **Continuous Execution:** Intraday slippage and bid-ask spreads are simplified in this model. In a live trading setup, friction costs would likely erode these marginal relative gains.
 
 ---
 
-## Future Work
+## Future Research Directions
 
-- [ ] **Multi-asset Support:** Extend the environment state-space to support portfolio optimization across multiple Nifty-50 stocks.
-- [ ] **Transaction Friction Tuning:** Implement variable slippage rates and tax brackets (STT, GST) for realistic Indian market simulation.
-- [ ] **Alternative Architectures:** Benchmark PPO against Recurrent Neural Network (LSTM/GRU) policies to capture long-term temporal dependencies.
+- [ ] **Short-selling Integration:** Allow the action space to support short positions so the agent can generate absolute returns in bearish regimes.
+- [ ] **Multi-Asset Training:** Train the policy on a broader basket of Nifty-50 stocks (TCS, HDFCBANK, etc.) to evaluate generalization.
+- [ ] **Action Masking:** Implement action masking to prevent the agent from selecting illegal actions (like selling when it doesn't hold shares) instead of relying on heavy negative reward penalties.
 
 ---
 
-## Disclaimer
+## AI Assistance Disclosure
 
-**Educational Purposes Only.** This project is developed as a portfolio project. It is not financial advice. Trading financial securities involves high risk, and the strategies learned by these agents are not guaranteed to be profitable in live trading environments.
+To remain fully transparent with recruiters and reviewers: **This repository contains AI-assisted work.**
+* **Core RL Logic & Math:** The mathematical formulation of the Gymnasium environment, state spaces, and Stable-Baselines3 integration represent my own core quant research code.
+* **Dashboard & UI Code:** I used AI agents (Gemini Antigravity / Claude Code) to build the dashboard shell, design the websocket/polling endpoints in FastAPI, generate the frontend styling layout, and integrate the helper widgets (such as speech-to-text and the chat assistant).
+* **Disclaimer:** This is an academic and portfolio project. It is not financial advice.

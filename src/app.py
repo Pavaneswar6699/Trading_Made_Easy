@@ -118,23 +118,18 @@ class ChartAnalysisRequest(BaseModel):
 class ChatRequest(BaseModel):
     question: str
 
-# Configure Gemini AI securely from environment or local secrets config
+# Configure Gemini AI securely from environment variables
 GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    try:
-        secrets_path = Path(__file__).resolve().parent / "secrets.json"
-        if secrets_path.exists():
-            with open(secrets_path, "r") as f:
-                secrets = json.load(f)
-                GEMINI_API_KEY = secrets.get("GEMINI_API_KEY")
-    except Exception as e:
-        print(f"Error loading local secrets.json: {e}")
-
 if GEMINI_API_KEY:
     try:
         genai.configure(api_key=GEMINI_API_KEY)
     except Exception as e:
-        print(f"Failed to configure Gemini: {e}")
+        print(f"Failed to configure Gemini API: {e}")
+else:
+    print("\n" + "="*80)
+    print("WARNING: GEMINI_API_KEY environment variable is not set.")
+    print("To enable Gemini Chat and Vision, run: export GEMINI_API_KEY='your_api_key'")
+    print("="*80 + "\n")
 
 
 
