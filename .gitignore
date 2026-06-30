@@ -22,3 +22,5 @@ ENV/
 .Trashes
 ehthumbs.db
 Thumbs.db
+src/secrets.json
+

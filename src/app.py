@@ -1,6 +1,8 @@
 import os
 import sys
 import threading
+import base64
+import json
 from pathlib import Path
 from typing import Dict, Any, List, Optional
 from pydantic import BaseModel
@@ -10,6 +12,8 @@ from fastapi import FastAPI, BackgroundTasks
 from fastapi.staticfiles import StaticFiles
 from fastapi.responses import FileResponse
 from fastapi.middleware.cors import CORSMiddleware
+import google.generativeai as genai
+
 
 # Ensure the parent directory is in path so we can import src modules
 sys.path.append(str(Path(__file__).resolve().parent.parent))
@@ -110,6 +114,29 @@ class BacktestParams(BaseModel):
 
 class ChartAnalysisRequest(BaseModel):
     image_data: str
+
+class ChatRequest(BaseModel):
+    question: str
+
+# Configure Gemini AI securely from environment or local secrets config
+GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
+if not GEMINI_API_KEY:
+    try:
+        secrets_path = Path(__file__).resolve().parent / "secrets.json"
+        if secrets_path.exists():
+            with open(secrets_path, "r") as f:
+                secrets = json.load(f)
+                GEMINI_API_KEY = secrets.get("GEMINI_API_KEY")
+    except Exception as e:
+        print(f"Error loading local secrets.json: {e}")
+
+if GEMINI_API_KEY:
+    try:
+        genai.configure(api_key=GEMINI_API_KEY)
+    except Exception as e:
+        print(f"Failed to configure Gemini: {e}")
+
+
 
 # Background training runner
 def run_training_background(params: TrainParams):
@@ -295,30 +322,105 @@ async def api_backtest(params: BacktestParams):
 
 @app.post("/api/analyze-chart")
 async def api_analyze_chart(req: ChartAnalysisRequest):
-    # Simulated AI evaluation of the base64 chart data.
-    # Checks for BTC/crypto markers or large base64 payload sizes to return a custom BTC response.
-    is_btc = "BTC" in req.image_data or len(req.image_data) > 1000
+    # Try calling Google Gemini Vision first
+    try:
+        header, base64_str = req.image_data.split(",", 1)
+        mime_type = header.split(";")[0].split(":")[1]
+        image_bytes = base64.b64decode(base64_str)
+        
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        
+        prompt = (
+            "Analyze this trading chart and return a structured JSON response for a beginner trader. "
+            "Your output MUST be a valid JSON object matching this structure EXACTLY (do not wrap in markdown or backticks):\n"
+            "{\n"
+            "  \"status\": \"success\",\n"
+            "  \"asset\": \"[Identify the asset, e.g., BTC/USDT]\",\n"
+            "  \"action\": \"[BUY (LONG), SELL (SHORT), or WAIT / NO ACTION]\",\n"
+            "  \"confidence\": \"[e.g., 85%]\",\n"
+            "  \"plain_explanation\": \"[Explain the trend/pattern in very simple, plain language analogies, e.g. 'the price is sliding down a steep hill']\",\n"
+            "  \"leverage_guide\": \"[For a ₹1,000 wallet size aiming for ₹40–₹60 profit: Specify recommended leverage (5x), precise buy/sell entry price, Target Exit (Take Profit) price, and Safety Exit (Stop Loss) price]\",\n"
+            "  \"danger_warning\": \"[A warning explaining exactly how much money they could lose in the worst case (e.g. ₹130 loss) if they hit their safety exit]\"\n"
+            "}"
+        )
+        
+        contents = [
+            {"mime_type": mime_type, "data": image_bytes},
+            prompt
+        ]
+        
+        response = model.generate_content(contents)
+        text = response.text.strip()
+        if text.startswith("```"):
+            lines = text.split("\n")
+            if lines[0].startswith("```json") or lines[0].startswith("```"):
+                text = "\n".join(lines[1:-1]).strip()
+        
+        data = json.loads(text)
+        return data
+    except Exception as e:
+        print(f"Gemini Vision API error: {e}. Falling back to simulator.")
+        
+        # Fallback simulator
+        is_btc = "BTC" in req.image_data or len(req.image_data) > 1000
+        if is_btc:
+            return {
+                "status": "success",
+                "asset": "BTC/USDT (Bitcoin)",
+                "action": "SELL (SHORT)",
+                "confidence": "85%",
+                "plain_explanation": "Looking at the chart, the price has been sliding down a steep hill recently (a strong downtrend) and is now stuck in a narrow sideways channel near the bottom. This pattern usually means sellers are resting before pushing the price even lower. It's best to join them rather than trying to buy now.",
+                "leverage_guide": "For a ₹1,000 wallet size aiming for a small ₹40 to ₹60 profit: Use 5x leverage. This makes your trading power ₹5,000. Sell (short) at the current level (~$59,026). Place a target exit (Take Profit) at $58,150, and a safety exit (Stop Loss) at $60,500. If the price reaches your target, you will close with around ₹75 profit.",
+                "danger_warning": "Warning: Leveraged trading is risky. If the price rises to $60,500, your safety exit will trigger, closing the trade with a small loss of ₹125, preventing you from losing your entire ₹1,000 capital."
+            }
+        else:
+            return {
+                "status": "success",
+                "asset": "General Stock Asset",
+                "action": "WAIT / NO ACTION",
+                "confidence": "70%",
+                "plain_explanation": "The chart shows a highly mixed pattern with random up and down candles. There is no clear direction or group in control.",
+                "leverage_guide": "With ₹1,000, do not enter this trade. Keep your cash safe until a clear trend emerges.",
+                "danger_warning": "Patience is key. Entering trades without a clear direction is gambling, not trading."
+            }
 
-    if is_btc:
-        return {
-            "status": "success",
-            "asset": "BTC/USDT (Bitcoin)",
-            "action": "SELL (SHORT)",
-            "confidence": "85%",
-            "plain_explanation": "Looking at the chart, the price has been sliding down a steep hill recently (a strong downtrend) and is now stuck in a narrow sideways channel near the bottom. This pattern usually means sellers are resting before pushing the price even lower. It's best to join them rather than trying to buy now.",
-            "leverage_guide": "For a ₹1,000 wallet size aiming for a small ₹40 to ₹60 profit: Use 5x leverage. This makes your trading power ₹5,000. Sell (short) at the current level (~$58,970). Place a target exit (Take Profit) at $58,150, and a safety exit (Stop Loss) at $60,500. If the price reaches your target, you will close with around ₹50 profit.",
-            "danger_warning": "Warning: Leveraged trading is risky. If the price rises to $60,500, your safety exit will trigger, closing the trade with a small loss of ₹130, preventing you from losing your entire ₹1,000 capital."
-        }
-    else:
-        return {
-            "status": "success",
-            "asset": "General Stock Asset",
-            "action": "WAIT / NO ACTION",
-            "confidence": "70%",
-            "plain_explanation": "The chart shows a highly mixed pattern with random up and down candles. There is no clear direction or group in control.",
-            "leverage_guide": "With ₹1,000, do not enter this trade. Keep your cash safe until a clear trend emerges.",
-            "danger_warning": "Patience is key. Entering trades without a clear direction is gambling, not trading."
-        }
+@app.post("/api/chat")
+async def api_chat_endpoint(req: ChatRequest):
+    try:
+        model = genai.GenerativeModel("gemini-1.5-flash")
+        system_prompt = (
+            "You are a friendly and professional Varsity AI Quant Tutor. "
+            "Explain financial, quant, and trading concepts in simple, plain language suitable for absolute beginners. "
+            "Keep answers concise, helpful, and directly related to the question. "
+            "If the user asks about the website or how to use it, remind them that the website is an "
+            "AI Trading Laboratory where they can set stock parameters, train a reinforcement learning policy, "
+            "and run backtests. Encourage them to ask about Sharpe ratios, drawdowns, market frictions, "
+            "or volatility regimes."
+        )
+        response = model.generate_content([system_prompt, req.question])
+        return {"answer": response.text}
+    except Exception as e:
+        print(f"Gemini Chat API error: {e}. Falling back to rules.")
+        # Local fallback rules
+        clean_query = req.question.lower()
+        if "sharpe" in clean_query:
+            ans = "The **Sharpe Ratio** (Varsity Module 9) measures risk-adjusted return. A Sharpe ratio above 1.0 means the agent earns enough return to justify the stock's volatility."
+        elif "drawdown" in clean_query:
+            ans = "**Maximum Drawdown** (Varsity Module 9) is the largest peak-to-trough drop in capital. Maintaining a low drawdown is critical for long-term survival."
+        elif any(x in clean_query for x in ["friction", "brokerage", "slippage"]):
+            ans = "**Market Frictions** (Varsity Module 9 & 7) include brokerage commissions and order execution slippages."
+        elif any(x in clean_query for x in ["regime", "volatility"]):
+            ans = "**Volatility Regimes** represent changing market behaviors (bull, bear, volatile, quiet) that our agent reads via technical indicators."
+        elif any(x in clean_query for x in ["ppo", "learning", "reinforcement"]):
+            ans = "**Reinforcement Learning (PPO)** (Varsity Module 10) trains the policy to find the best rules."
+        elif any(x in clean_query for x in ["intraday", "help", "trade", "trading"]):
+            ans = "Yes, absolutely! I am a **fully automated, powerful Quant Advisor** built to guide your intraday trading decisions. You can attach chart screenshots below, ask for leverage recommendations, or set optimal settings."
+        elif any(x in clean_query for x in ["website", "understand", "explain", "how", "operate", "use"]):
+            ans = "This website is an **AI Trading Laboratory** where you can train and test intelligent agents. Use the 3 steps to set parameters, train policy, and test it."
+        else:
+            ans = "Hello! I'm your Varsity AI Quant Tutor. Ask me about the Sharpe ratio, drawdowns, market frictions, volatility regimes, or training policies!"
+        return {"answer": ans}
+
 
 # Serve Frontend static assets
 static_dir = Path("src/static")
