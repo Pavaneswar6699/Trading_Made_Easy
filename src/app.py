@@ -403,23 +403,52 @@ async def api_chat_endpoint(req: ChatRequest):
         print(f"Gemini Chat API error: {e}. Falling back to rules.")
         # Local fallback rules
         clean_query = req.question.lower()
-        if "sharpe" in clean_query:
-            ans = "The **Sharpe Ratio** (Varsity Module 9) measures risk-adjusted return. A Sharpe ratio above 1.0 means the agent earns enough return to justify the stock's volatility."
+
+        if any(x in clean_query for x in ["analyze", "analyzing", "chart", "charts", "visual", "image", "upload"]):
+            ans = (
+                "I analyze charts using a high-powered visual parsing engine. "
+                "When you click the paperclip icon and upload a chart screenshot (like BTC/USDT or stock candles):\n\n"
+                "1. **Trend Scanning**: I determine if the market is trending up, down, or going sideways.\n"
+                "2. **Support & Resistance**: I map key price floor and ceiling zones.\n"
+                "3. **Leverage & Exit Targets**: For a ₹1,000 wallet size aiming for ₹40–₹60 profit, I calculate "
+                "the exact entry levels, the optimal leverage (like 5x), a Safety Exit (Stop Loss) to keep you safe, "
+                "and a Target Exit (Take Profit) to lock in gains."
+            )
+        elif "sharpe" in clean_query:
+            ans = "The **Sharpe Ratio** (Varsity Module 9) measures risk-adjusted return. A Sharpe ratio above 1.0 means the agent earns enough return to justify the stock's volatility. In Step 1, adjusting settings affects your agent's Sharpe outcome."
         elif "drawdown" in clean_query:
-            ans = "**Maximum Drawdown** (Varsity Module 9) is the largest peak-to-trough drop in capital. Maintaining a low drawdown is critical for long-term survival."
+            ans = "**Maximum Drawdown** (Varsity Module 9) is the largest peak-to-trough drop in capital. Maintaining a low drawdown is critical for long-term survival. You can penalize drawdowns using the 'Drawdown Coeff' parameter in Step 1."
         elif any(x in clean_query for x in ["friction", "brokerage", "slippage"]):
-            ans = "**Market Frictions** (Varsity Module 9 & 7) include brokerage commissions and order execution slippages."
+            ans = "**Market Frictions** (Varsity Module 9 & 7) include brokerage commissions and order execution slippages. If frictions are too high, the agent will learn to trade less frequently, looking only for strong entry setups."
         elif any(x in clean_query for x in ["regime", "volatility"]):
-            ans = "**Volatility Regimes** represent changing market behaviors (bull, bear, volatile, quiet) that our agent reads via technical indicators."
+            ans = "**Volatility Regimes** represent changing market behaviors (bull, bear, volatile, quiet). Our agent reads these states via technical indicators (standard deviation, trend flags) to adjust asset exposure dynamically."
         elif any(x in clean_query for x in ["ppo", "learning", "reinforcement"]):
-            ans = "**Reinforcement Learning (PPO)** (Varsity Module 10) trains the policy to find the best rules."
+            ans = "**Reinforcement Learning (PPO)** (Varsity Module 10) trains the policy. The policy is rewarded for trading profits and penalized for drawdowns, iteratively updating parameters to find the best rules."
+        elif any(x in clean_query for x in ["stop loss", "safety exit", "stop-loss"]):
+            ans = "A **Safety Exit (Stop-Loss)** is an automated order that triggers at a specified price boundary to close a losing trade early, preventing you from losing your entire trading capital if the market moves against you."
+        elif any(x in clean_query for x in ["take profit", "target exit", "take-profit"]):
+            ans = "A **Target Exit (Take-Profit)** is an automated order that triggers at your target price to close a winning trade and lock in your gains before the market reverses."
+        elif any(x in clean_query for x in ["leverage", "margin", "borrow"]):
+            ans = "**Leverage** means borrowing capital from an exchange to trade larger position sizes. For example, 5x leverage turns ₹1,000 into ₹5,000 of trading exposure, multiplying both your potential profits and your potential losses by 5."
         elif any(x in clean_query for x in ["intraday", "help", "trade", "trading"]):
-            ans = "Yes, absolutely! I am a **fully automated, powerful Quant Advisor** built to guide your intraday trading decisions. You can attach chart screenshots below, ask for leverage recommendations, or set optimal settings."
+            ans = (
+                "Yes, absolutely! I am a **fully automated, powerful Quant Advisor** built to guide your intraday trading decisions. Here is how I can directly help you:\n\n"
+                "1. **Analyze Charts**: Click the paperclip icon below to attach any chart screenshot (like BTC/USDT or stocks). I will immediately scan it, tell you whether to **Buy** or **Sell**, and calculate your entry/exit targets.\n"
+                "2. **Portfolio Leverage**: Tell me your capital size (e.g. ₹1,000) and target returns, and I will calculate the exact leverage settings and safety exits (Stop-Loss) to protect your money.\n"
+                "3. **Optimal Parameters**: Ask me how to configure the Step 1 and Step 2 settings for your chosen asset to maximize Sharpe ratios."
+            )
         elif any(x in clean_query for x in ["website", "understand", "explain", "how", "operate", "use"]):
-            ans = "This website is an **AI Trading Laboratory** where you can train and test intelligent agents. Use the 3 steps to set parameters, train policy, and test it."
+            ans = (
+                "This website is an **AI Trading Laboratory** designed to train and test intelligent agents on Indian stocks. Here is how to use it in 3 steps:\n\n"
+                "1. **Step 1 (Settings)**: Select an asset and transaction cost values. Transaction cost values act as a friction fee on trades.\n"
+                "2. **Step 2 (Train)**: Adjust training steps and click 'Start Agent Training'. The AI runs simulations to find the best rules.\n"
+                "3. **Step 3 (Test)**: Click 'Run Backtest Simulation' to see the AI's performance vs. holding the asset.\n\n"
+                "*Tip: Turn on 'Learn Varsity Mode' in the header to show tips on each step, or upload a chart screenshot using the paperclip clip icon!*"
+            )
         else:
-            ans = "Hello! I'm your Varsity AI Quant Tutor. Ask me about the Sharpe ratio, drawdowns, market frictions, volatility regimes, or training policies!"
+            ans = "Hello! I'm your Varsity AI Quant Tutor. Ask me about: 'How to analyze charts', 'What is stop-loss', 'How leverage works', or 'Max drawdown'."
         return {"answer": ans}
+
 
 
 # Serve Frontend static assets
@@ -431,7 +460,11 @@ app.mount("/static", StaticFiles(directory="src/static"), name="static")
 
 @app.get("/")
 async def get_index():
-    return FileResponse("src/static/index.html")
+    response = FileResponse("src/static/index.html")
+    response.headers["Cache-Control"] = "no-cache, no-store, must-revalidate"
+    response.headers["Pragma"] = "no-cache"
+    response.headers["Expires"] = "0"
+    return response
 
 if __name__ == "__main__":
     uvicorn.run("app:app", host="127.0.0.1", port=8000, reload=True)
