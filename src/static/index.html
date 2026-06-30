@@ -34,7 +34,17 @@
                     <span>AI Quant Studio</span>
                 </div>
             </div>
+            
+            <!-- VARSITY MODE TOGGLER -->
             <div class="header-actions">
+                <div class="varsity-toggle-box">
+                    <span class="toggle-lbl"><i class="fa-solid fa-graduation-cap text-cyan"></i> Learn Varsity Mode</span>
+                    <label class="switch-toggle">
+                        <input type="checkbox" id="varsity-toggle" checked>
+                        <span class="slider-round"></span>
+                    </label>
+                </div>
+                
                 <div id="user-profile" class="user-profile hidden">
                     <span id="user-display-name">Creator</span>
                     <button id="btn-logout" class="btn-logout" title="Logout"><i class="fa-solid fa-right-from-bracket"></i></button>
@@ -61,6 +71,13 @@
                     <i class="fa-solid fa-sliders icon-cyan"></i>
                     <h2>Asset & Friction Settings</h2>
                 </div>
+                
+                <!-- Varsity Explanation Box -->
+                <div class="varsity-explain" id="varsity-step-1">
+                    <i class="fa-solid fa-graduation-cap icon-cyan"></i>
+                    <p><strong>Varsity Module 9 & 7:</strong> Stock trading incurs transaction charges (brokerage) and delays (slippage). The AI agent must learn to minimize these friction costs to preserve capital.</p>
+                </div>
+
                 <div class="card-body">
                     <form id="config-form">
                         <div class="form-group">
@@ -102,6 +119,13 @@
                     <i class="fa-solid fa-microchip icon-purple"></i>
                     <h2>Train AI Policy</h2>
                 </div>
+
+                <!-- Varsity Explanation Box -->
+                <div class="varsity-explain" id="varsity-step-2">
+                    <i class="fa-solid fa-graduation-cap icon-purple"></i>
+                    <p><strong>Varsity Module 10 (Trading Systems):</strong> Reinforcement learning builds a trading system by executing simulated trades over historical data. More steps improve agent adaptation.</p>
+                </div>
+
                 <div class="card-body">
                     <div class="form-group">
                         <label for="timesteps-input">Training Steps: <span id="timesteps-val" class="glow-value">50,000</span></label>
@@ -141,6 +165,13 @@
                     <i class="fa-solid fa-chart-line icon-green"></i>
                     <h2>Simulation Arena</h2>
                 </div>
+
+                <!-- Varsity Explanation Box -->
+                <div class="varsity-explain" id="varsity-step-3">
+                    <i class="fa-solid fa-graduation-cap icon-green"></i>
+                    <p><strong>Varsity Module 2 (Technical Analysis):</strong> Evaluating on out-of-sample data checks how the policy adapts to price patterns and volatility shifts it hasn't seen before.</p>
+                </div>
+
                 <div class="card-body flex-center-body">
                     <p class="step-hint">Click below to test your trained policy against real market data.</p>
                     <button id="btn-backtest" class="btn btn-secondary w-full glow-green">
@@ -192,6 +223,17 @@
                             <span class="title">Max Drawdown</span>
                             <span id="metric-drawdown" class="value">0.00%</span>
                         </div>
+                    </div>
+                </div>
+
+                <!-- AI QUANT ADVISOR DIAGNOSTICS CARD -->
+                <div class="ai-advisor-card glass-card">
+                    <div class="advisor-head">
+                        <i class="fa-solid fa-user-tie text-cyan animate-pulse"></i>
+                        <h3>AI Quant Advisor Analysis</h3>
+                    </div>
+                    <div class="advisor-body">
+                        <p id="ai-advisor-text">Simulation results ready. Running performance diagnostics based on Varsity guidelines...</p>
                     </div>
                 </div>
 
@@ -290,6 +332,28 @@
             <p>NiftyRL Quant Dashboard | Powered by stable-baselines3, FastAPI & Firebase Web SDK</p>
         </footer>
 
+    </div>
+
+    <!-- FLOATING AI QUANT TUTOR WIDGET -->
+    <div id="ai-tutor-widget" class="ai-tutor-widget glass-card minimized">
+        <div class="chat-header" id="chat-header">
+            <div class="header-title-box">
+                <i class="fa-solid fa-user-ninja text-cyan animate-pulse"></i>
+                <span>Varsity AI Tutor</span>
+            </div>
+            <button id="btn-toggle-chat" class="chat-control-btn"><i class="fa-solid fa-chevron-up"></i></button>
+        </div>
+        <div class="chat-body" id="chat-body">
+            <div id="chat-messages" class="chat-messages">
+                <div class="message system">
+                    <p>Welcome! I'm your AI Quant Tutor. Ask me anything about risk management, Sharpe ratio, drawdowns, volatility regimes, or Zerodha Varsity lessons!</p>
+                </div>
+            </div>
+            <div class="chat-input-row">
+                <input type="text" id="chat-input" placeholder="Type a trading question..." autocomplete="off">
+                <button id="btn-send-chat" class="chat-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            </div>
+        </div>
     </div>
 
     <!-- GLASS LOGIN MODAL -->

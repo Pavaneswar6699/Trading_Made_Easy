@@ -111,7 +111,7 @@ body {
 .header-actions {
     display: flex;
     align-items: center;
-    gap: 16px;
+    gap: 20px;
 }
 
 .user-profile {
@@ -136,6 +136,105 @@ body {
 
 .btn-logout:hover {
     color: var(--neon-red);
+}
+
+/* --- Varsity Toggle Switch --- */
+.varsity-toggle-box {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.02);
+    padding: 8px 16px;
+    border-radius: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.04);
+}
+
+.varsity-toggle-box .toggle-lbl {
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.switch-toggle {
+    position: relative;
+    display: inline-block;
+    width: 36px;
+    height: 20px;
+}
+
+.switch-toggle input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider-round {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: rgba(255, 255, 255, 0.1);
+    transition: .3s;
+    border-radius: 20px;
+}
+
+.slider-round:before {
+    position: absolute;
+    content: "";
+    height: 14px;
+    width: 14px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: .3s;
+    border-radius: 50%;
+}
+
+.switch-toggle input:checked + .slider-round {
+    background-color: var(--neon-cyan);
+    box-shadow: var(--glow-cyan);
+}
+
+.switch-toggle input:checked + .slider-round:before {
+    transform: translateX(16px);
+}
+
+/* --- Varsity Explanations Box --- */
+.varsity-explain {
+    background: rgba(0, 240, 255, 0.03);
+    border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+    padding: 14px 20px;
+    display: flex;
+    gap: 12px;
+    align-items: flex-start;
+    overflow: hidden;
+    max-height: 200px;
+    transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.varsity-explain.hidden {
+    max-height: 0;
+    padding-top: 0;
+    padding-bottom: 0;
+    border-bottom-color: transparent;
+}
+
+.varsity-explain i {
+    font-size: 1.1rem;
+    margin-top: 2px;
+}
+
+.varsity-explain p {
+    font-size: 0.82rem;
+    line-height: 1.45;
+    color: var(--text-secondary);
 }
 
 /* --- Hero Intro --- */
@@ -553,6 +652,42 @@ select.form-control option {
 .metric-card .value.positive { color: var(--neon-green); text-shadow: 0 0 10px rgba(16, 185, 129, 0.25); }
 .metric-card .value.negative { color: var(--neon-red); text-shadow: 0 0 10px rgba(244, 63, 94, 0.25); }
 
+/* --- AI Advisor Diagnostics Card --- */
+.ai-advisor-card {
+    border-radius: 12px;
+    border: 1px solid rgba(0, 240, 255, 0.15);
+    background: rgba(0, 240, 255, 0.02);
+    margin-bottom: 24px;
+    padding: 20px;
+    box-shadow: 0 0 10px rgba(0, 240, 255, 0.05);
+}
+
+.advisor-head {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border-bottom: 1px solid rgba(0, 240, 255, 0.1);
+    padding-bottom: 12px;
+    margin-bottom: 12px;
+}
+
+.advisor-head h3 {
+    font-family: var(--font-heading);
+    font-size: 0.75rem;
+    letter-spacing: 1px;
+    color: var(--text-primary);
+}
+
+.ai-advisor-card p {
+    font-size: 0.88rem;
+    line-height: 1.5;
+    color: var(--text-secondary);
+}
+
+.ai-advisor-card strong {
+    color: var(--neon-cyan);
+}
+
 /* --- Chart --- */
 .chart-container {
     background: rgba(0, 0, 0, 0.3);
@@ -647,6 +782,155 @@ select.form-control option {
 .text-muted { color: var(--text-muted); }
 .text-positive { color: var(--neon-green); }
 .text-negative { color: var(--neon-red); }
+
+/* --- Floating Chatbot UI --- */
+.ai-tutor-widget {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    width: 330px;
+    height: 420px;
+    z-index: 99;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+    box-shadow: 0 10px 40px rgba(0, 0, 0, 0.6);
+}
+
+.ai-tutor-widget.minimized {
+    height: 48px;
+    cursor: pointer;
+}
+
+.chat-header {
+    height: 48px;
+    background: linear-gradient(90deg, rgba(13, 20, 38, 0.95), rgba(20, 30, 58, 0.95));
+    border-bottom: 1px solid var(--color-border);
+    padding: 0 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    user-select: none;
+}
+
+.header-title-box {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 1px;
+}
+
+.chat-control-btn {
+    background: none;
+    border: none;
+    color: var(--text-secondary);
+    cursor: pointer;
+    font-size: 0.95rem;
+    transition: var(--transition-smooth);
+}
+
+.chat-body {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+    background: rgba(8, 12, 24, 0.95);
+    height: calc(100% - 48px);
+}
+
+.chat-messages {
+    flex-grow: 1;
+    padding: 16px;
+    overflow-y: auto;
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+
+.chat-messages::-webkit-scrollbar {
+    width: 4px;
+}
+
+.message {
+    max-width: 85%;
+    padding: 10px 14px;
+    border-radius: 12px;
+    font-size: 0.82rem;
+    line-height: 1.4;
+}
+
+.message.system {
+    align-self: center;
+    max-width: 95%;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid rgba(255, 255, 255, 0.04);
+    text-align: center;
+    color: var(--text-secondary);
+    font-style: italic;
+}
+
+.message.user {
+    align-self: flex-end;
+    background: linear-gradient(135deg, #00f0ff 0%, #3b82f6 100%);
+    color: #ffffff;
+    border-bottom-right-radius: 2px;
+    box-shadow: 0 2px 10px rgba(0, 240, 255, 0.15);
+}
+
+.message.tutor {
+    align-self: flex-start;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid var(--color-border);
+    color: var(--text-primary);
+    border-bottom-left-radius: 2px;
+}
+
+.chat-input-row {
+    padding: 12px;
+    border-top: 1px solid var(--color-border);
+    display: flex;
+    gap: 8px;
+    background: rgba(13, 20, 38, 0.4);
+}
+
+.chat-input-row input {
+    flex-grow: 1;
+    background: rgba(255, 255, 255, 0.02);
+    border: 1px solid var(--color-border);
+    border-radius: 6px;
+    padding: 8px 12px;
+    color: var(--text-primary);
+    font-family: var(--font-body);
+    font-size: 0.8rem;
+    outline: none;
+    transition: var(--transition-smooth);
+}
+
+.chat-input-row input:focus {
+    border-color: var(--neon-cyan);
+}
+
+.chat-send-btn {
+    background: var(--neon-cyan);
+    border: none;
+    border-radius: 6px;
+    width: 34px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #040409;
+    cursor: pointer;
+    transition: var(--transition-smooth);
+}
+
+.chat-send-btn:hover {
+    transform: scale(1.05);
+    box-shadow: var(--glow-cyan);
+}
 
 /* --- Auth Modal Overlay --- */
 .modal-overlay {

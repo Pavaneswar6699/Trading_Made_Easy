@@ -101,6 +101,7 @@ document.addEventListener("DOMContentLoaded", () => {
     // ==========================================================================
     // 2. ELEMENT SELECTIONS & WIZARD UI EVENT LISTENERS
     // ==========================================================================
+    const varsityToggle = document.getElementById("varsity-toggle");
     const tickerSelect = document.getElementById("ticker-select");
     const brokerageInput = document.getElementById("brokerage-input");
     const slippageInput = document.getElementById("slippage-input");
@@ -125,6 +126,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const metricAgentReturn = document.getElementById("metric-agent-return");
     const metricSharpe = document.getElementById("metric-sharpe");
     const metricDrawdown = document.getElementById("metric-drawdown");
+    const aiAdvisorText = document.getElementById("ai-advisor-text");
     
     const statWinRate = document.getElementById("stat-win-rate");
     const statTrades = document.getElementById("stat-trades");
@@ -136,7 +138,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     let equityChartInstance = null;
     let progressInterval = null;
-    let lastBacktestResult = null; // Cache active result details
+    let lastBacktestResult = null; 
 
     // Format utility helpers
     const formatCurrency = (val) => {
@@ -159,7 +161,22 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================================================
-    // 3. stock choice api loaders
+    // 3. VARSITY MODE EXPLANATIONS CONTROLLER
+    // ==========================================================================
+    varsityToggle.addEventListener("change", () => {
+        const explainers = document.querySelectorAll(".varsity-explain");
+        explainers.forEach(el => {
+            if (varsityToggle.checked) {
+                el.classList.remove("hidden");
+            } else {
+                el.classList.add("hidden");
+            }
+        });
+    });
+
+
+    // ==========================================================================
+    // 4. STOCK CHOICE API LOADERS
     // ==========================================================================
     const loadTickers = async () => {
         try {
@@ -179,7 +196,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================================================
-    // 4. TRAINING LOGIC & POLISHING
+    // 5. TRAINING LOGIC
     // ==========================================================================
     btnTrain.addEventListener("click", async () => {
         const params = {
@@ -252,7 +269,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================================================
-    // 5. SIMULATION BACKTEST ARENA
+    // 6. SIMULATION BACKTEST & AI DIAGNOSTICS ADVISOR
     // ==========================================================================
     btnBacktest.addEventListener("click", async () => {
         const params = {
@@ -285,7 +302,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            lastBacktestResult = data; // Cache data for scoreboard upload
+            lastBacktestResult = data; 
 
             // Update top cards
             metricFinalWorth.textContent = formatCurrency(data.metrics.final_net_worth);
@@ -311,11 +328,13 @@ document.addEventListener("DOMContentLoaded", () => {
             statFriction.textContent = formatCurrency(data.metrics.total_friction);
             statBenchmarkReturn.textContent = formatPercent(data.metrics.buy_hold_return_pct);
 
+            // Run automated AI Advisor Diagnostics
+            runAIDiagnostics(data.metrics);
+
             // Render chart and tables
             renderChart(data);
             renderTradeTable(data.trades);
             
-            // Scroll dynamically to results section
             resultsSection.scrollIntoView({ behavior: 'smooth' });
 
         } catch (err) {
@@ -327,6 +346,47 @@ document.addEventListener("DOMContentLoaded", () => {
             btnTrain.disabled = false;
         }
     });
+
+    // AI Performance Diagnostics Reviewer
+    function runAIDiagnostics(metrics) {
+        let text = "";
+        const ticker = tickerSelect.value;
+        const returnDiff = metrics.total_return_pct - metrics.buy_hold_return_pct;
+
+        text += `Your agent finished with a final return of <strong>${formatPercent(metrics.total_return_pct)}</strong> on ${ticker}, compared to the benchmark's return of <strong>${formatPercent(metrics.buy_hold_return_pct)}</strong>. `;
+
+        if (returnDiff > 5) {
+            text += `Outstanding! The AI agent outperformed standard Buy-and-Hold by <strong>${returnDiff.toFixed(2)}%</strong>. `;
+        } else if (returnDiff > 0) {
+            text += `Good. The agent successfully beat the benchmark, showing positive risk-adjusted metrics. `;
+        } else {
+            text += `The agent underperformed the benchmark by <strong>${Math.abs(returnDiff).toFixed(2)}%</strong>. `;
+        }
+
+        // Sharpe analysis (Varsity Module 9)
+        if (metrics.sharpe_ratio > 1.5) {
+            text += `The Sharpe ratio is excellent at <strong>${metrics.sharpe_ratio.toFixed(2)}</strong>. This indicates highly efficient risk-adjusted performance. `;
+        } else if (metrics.sharpe_ratio > 0.8) {
+            text += `The Sharpe ratio of <strong>${metrics.sharpe_ratio.toFixed(2)}</strong> is decent, meaning rewards are balanced relative to volatility. `;
+        } else {
+            text += `The Sharpe ratio is weak (<strong>${metrics.sharpe_ratio.toFixed(2)}</strong>). According to <em>Varsity Module 10 (Trading Systems)</em>, you should consider increasing <strong>Training Steps</strong> to 100,000+ so the agent is exposed to more volatility cycles. `;
+        }
+
+        // Drawdown analysis (Varsity Module 9)
+        if (metrics.max_drawdown_pct > 7.0) {
+            text += `However, the maximum drawdown reached <strong>${metrics.max_drawdown_pct.toFixed(2)}%</strong>, which exposes your capital to high risk. Under <em>Varsity Module 9 (Risk Management)</em> guidelines, you should increase the <strong>Risk Aversion</strong> and <strong>Drawdown Coeff</strong> settings in Step 1 to make the reward penalty stronger. `;
+        } else {
+            text += `Importantly, the maximum drawdown was kept tight at <strong>${metrics.max_drawdown_pct.toFixed(2)}%</strong>, demonstrating excellent defensive risk management. `;
+        }
+
+        // Friction charges (Varsity Module 7)
+        const avgFrictionPerTrade = metrics.total_friction / (metrics.total_trades || 1);
+        if (metrics.total_friction > 1500) {
+            text += `Total frictions paid were high at <strong>${formatCurrency(metrics.total_friction)}</strong>. Under <em>Varsity Module 7 (Taxation & Charges)</em> principles, high transaction frequencies can erode profits. Try widening your brokerage settings or training the policy with higher transaction penalties to discourage excessive trading.`;
+        }
+
+        aiAdvisorText.innerHTML = text;
+    }
 
     const renderChart = (data) => {
         const ctx = document.getElementById("equity-chart").getContext("2d");
@@ -466,7 +526,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================================================
-    // 6. SCOREBOARD / LEADERBOARD OPERATIONS
+    // 7. SCOREBOARD / LEADERBOARD OPERATIONS
     // ==========================================================================
     async function loadScoreboard() {
         scoreboardBody.innerHTML = `<tr><td colspan="8" class="text-center text-muted">Syncing leaderboard database...</td></tr>`;
@@ -545,7 +605,93 @@ document.addEventListener("DOMContentLoaded", () => {
 
 
     // ==========================================================================
-    // 7. FIREBASE AUTH & GLASS MODAL MANAGEMENT
+    // 8. FLOATING AI QUANT TUTOR CHATBOT ENGINE (Q&A Parse Rules)
+    // ==========================================================================
+    const aiTutorWidget = document.getElementById("ai-tutor-widget");
+    const chatHeader = document.getElementById("chat-header");
+    const btnToggleChat = document.getElementById("btn-toggle-chat");
+    const chatMessages = document.getElementById("chat-messages");
+    const chatInput = document.getElementById("chat-input");
+    const btnSendChat = document.getElementById("btn-send-chat");
+
+    // Toggle Chat visibility
+    const toggleChat = () => {
+        aiTutorWidget.classList.toggle("minimized");
+        const icon = btnToggleChat.querySelector("i");
+        if (aiTutorWidget.classList.contains("minimized")) {
+            icon.className = "fa-solid fa-chevron-up";
+        } else {
+            icon.className = "fa-solid fa-chevron-down";
+            // Scroll messages
+            chatMessages.scrollTop = chatMessages.scrollHeight;
+        }
+    };
+    chatHeader.addEventListener("click", toggleChat);
+    btnToggleChat.addEventListener("click", (e) => {
+        e.stopPropagation(); // prevent header click duplicate firing
+        toggleChat();
+    });
+
+    // Send chat message
+    const sendChatMessage = () => {
+        const text = chatInput.value.trim();
+        if (!text) return;
+
+        appendMessage("user", text);
+        chatInput.value = "";
+
+        // Trigger typing state
+        setTimeout(() => {
+            const tutorResponse = getTutorResponse(text);
+            appendMessage("tutor", tutorResponse);
+        }, 350);
+    };
+
+    btnSendChat.addEventListener("click", sendChatMessage);
+    chatInput.addEventListener("keypress", (e) => {
+        if (e.key === "Enter") sendChatMessage();
+    });
+
+    function appendMessage(sender, msgText) {
+        const msgDiv = document.createElement("div");
+        msgDiv.className = `message ${sender}`;
+        msgDiv.innerHTML = `<p>${msgText}</p>`;
+        chatMessages.appendChild(msgDiv);
+        chatMessages.scrollTop = chatMessages.scrollHeight;
+    }
+
+    // Varsity Q&A Database Router
+    function getTutorResponse(query) {
+        const cleanQuery = query.toLowerCase();
+
+        if (cleanQuery.includes("sharpe")) {
+            return "The **Sharpe Ratio** (Varsity Module 9) measures risk-adjusted return. A Sharpe ratio above 1.0 means the agent earns enough return to justify the stock's volatility. In Step 1, adjusting settings affects your agent's Sharpe outcome.";
+        }
+        if (cleanQuery.includes("drawdown")) {
+            return "**Maximum Drawdown** (Varsity Module 9) is the largest peak-to-trough drop in capital. Maintaining a low drawdown is critical for long-term survival. You can penalize drawdowns using the 'Drawdown Coeff' parameter in Step 1.";
+        }
+        if (cleanQuery.includes("friction") || cleanQuery.includes("brokerage") || cleanQuery.includes("slippage")) {
+            return "**Market Frictions** (Varsity Module 9 & 7) include brokerage commissions and order execution slippages. If frictions are too high, the agent will learn to trade less frequently, looking only for strong entry setups.";
+        }
+        if (cleanQuery.includes("regime") || cleanQuery.includes("volatility")) {
+            return "**Volatility Regimes** represent changing market behaviors (bull, bear, volatile, quiet). Our agent reads these states via technical indicators (standard deviation, trend flags) to adjust asset exposure dynamically.";
+        }
+        if (cleanQuery.includes("ppo") || cleanQuery.includes("learning") || cleanQuery.includes("reinforcement")) {
+            return "**Reinforcement Learning (PPO)** (Varsity Module 10) trains the policy. The policy is rewarded for trading profits and penalized for drawdowns, iteratively updating parameters to find the best rules.";
+        }
+        if (cleanQuery.includes("varsity") || cleanQuery.includes("zerodha")) {
+            return "Zerodha Varsity has excellent modules! For NiftyRL, the key modules are **Module 9 (Risk Management & Psychology)**, **Module 10 (Trading Systems)**, and **Module 2 (Technical Analysis)**.";
+        }
+        if (cleanQuery.includes("hello") || cleanQuery.includes("hi") || cleanQuery.includes("hey")) {
+            return "Hello! I'm your Varsity AI Quant Tutor. Ask me about the Sharpe ratio, drawdowns, market frictions, volatility regimes, or training policies!";
+        }
+
+        return "I'm not fully sure about that term. It sounds related to **Technical Analysis** (Varsity Module 2) or **Risk Management** (Varsity Module 9). Try asking about: 'Sharpe ratio', 'Max drawdown', 'Market frictions', or 'Volatility regimes'.";
+    }
+
+
+    // ==========================================================================
+    // 9. FIREBASE AUTH & GLASS MODAL MANAGEMENT
     // ==========================================================================
     const authModal = document.getElementById("auth-modal");
     const btnLoginTrigger = document.getElementById("btn-login-trigger");
