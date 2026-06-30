@@ -634,19 +634,46 @@ document.addEventListener("DOMContentLoaded", () => {
     });
 
     // Send chat message
-    const sendChatMessage = () => {
+    const sendChatMessage = async () => {
         const text = chatInput.value.trim();
         if (!text) return;
 
         appendMessage("user", text);
         chatInput.value = "";
 
-        // Trigger typing state
-        setTimeout(() => {
+        // Show typing indicator
+        appendMessage("tutor", `<i class="fa-solid fa-spinner fa-spin"></i> Thinking...`);
+
+        try {
+            const res = await fetch("/api/chat", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ question: text })
+            });
+            const data = await res.json();
+            
+            // Remove typing indicator
+            const msgList = chatMessages.querySelectorAll(".message");
+            if (msgList.length > 0) {
+                msgList[msgList.length - 1].remove();
+            }
+
+            // Convert newlines to breaks or markdown
+            const formattedAnswer = data.answer.replace(/\n/g, "<br>");
+            appendMessage("tutor", formattedAnswer);
+        } catch (err) {
+            console.error(err);
+            const msgList = chatMessages.querySelectorAll(".message");
+            if (msgList.length > 0) {
+                msgList[msgList.length - 1].remove();
+            }
+            
+            // Fallback to local response if backend fails
             const tutorResponse = getTutorResponse(text);
             appendMessage("tutor", tutorResponse);
-        }, 350);
+        }
     };
+
 
     btnSendChat.addEventListener("click", sendChatMessage);
     chatInput.addEventListener("keypress", (e) => {
